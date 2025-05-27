@@ -132,44 +132,6 @@ This project uses `pre-commit` with `black` for code formatting and `ruff` for l
     # Adjust port mapping as needed
     ```
 
-## Branch Protection Setup
-
-To set up branch protection rules for a secure development workflow:
-
-### Setting Up Branch Protection Rules
-
-1. **Protect the main branch:**
-   ```bash
-   # Enable branch protection with PR requirements
-   gh api --method PUT repos/:owner/:repo/branches/main/protection \
-     --field required_status_checks='{"strict":true,"contexts":[]}' \
-     --field enforce_admins=true \
-     --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true}' \
-     --field restrictions=null
-
-   # Enable admin enforcement (applies rules to repo owners too)
-   gh api -X POST repos/:owner/:repo/branches/main/protection/enforce_admins
-   ```
-
-2. **Protect the dev branch:**
-   ```bash
-   # Enable branch protection with PR requirements
-   gh api --method PUT repos/:owner/:repo/branches/dev/protection \
-     --field required_status_checks='{"strict":true,"contexts":[]}' \
-     --field enforce_admins=true \
-     --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true}' \
-     --field restrictions=null
-
-   # Enable admin enforcement
-   gh api -X POST repos/:owner/:repo/branches/dev/protection/enforce_admins
-   ```
-
-### Workflow
-After protection is enabled:
-- Feature branches → PR to `dev`
-- `dev` → PR to `main`
-- Direct pushes to protected branches are blocked (even for admins)
-
 ## Contributing
 
 (Add guidelines if you plan to collaborate or open-source the template/projects derived from it.)
