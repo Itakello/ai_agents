@@ -10,7 +10,7 @@ from typing import Any
 
 import openai
 from openai import NOT_GIVEN
-from openai.types.responses import ResponseInputItemParam, ResponseTextConfigParam
+from openai.types.responses import ResponseInputItemParam, ResponseInputParam, ResponseTextConfigParam
 
 from .utils import read_file_content
 
@@ -31,7 +31,7 @@ class OpenAIClient:
         self.client = openai.OpenAI(api_key=api_key)
         self.response_id: str | None = None
 
-    def _create_messages(self, sys_prompt: str | None, user_prompt: str | None) -> list[ResponseInputItemParam]:
+    def _create_messages(self, sys_prompt: str | None, user_prompt: str | None) -> ResponseInputParam:
         """Create a list of messages for the OpenAI API.
 
         Args:
