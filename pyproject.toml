@@ -28,6 +28,7 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "python-dotenv",
+    "openai",
 ]
 
 [project.optional-dependencies]
