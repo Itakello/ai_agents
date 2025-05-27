@@ -74,7 +74,7 @@ class OpenAIClient:
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
             )
 
-            if not hasattr(response, 'id'):
+            if not hasattr(response, "id"):
                 raise ValueError(f"Unexpected response type: {type(response)}")
 
             self.response_id = response.id
@@ -137,7 +137,7 @@ class OpenAIClient:
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
             )
 
-            if not hasattr(response, 'id'):
+            if not hasattr(response, "id"):
                 raise ValueError(f"Unexpected response type: {type(response)}")
 
             # Store the response ID for the next interaction
@@ -151,7 +151,7 @@ class OpenAIClient:
                     error_msg += f" (code: {error_code})"
                 raise ValueError(error_msg)
 
-            return json.loads(response.output_text) if response.output_text else {}
+            return dict(json.loads(response.output_text)) if response.output_text else {}
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse structured output as JSON: {str(e)}") from e
 
