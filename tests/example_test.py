@@ -38,8 +38,32 @@ def test_another_example_skipped() -> None:
 
 
 def test_settings_load() -> None:
-    settings = Settings()  # type: ignore[call-arg]
-    assert settings.LOG_LEVEL is not None
+    # Test with mock environment variables to avoid requiring actual config
+    import os
+
+    test_env = {
+        "OPENAI_API_KEY": "test-key",
+        "NOTION_API_KEY": "test-notion-key",
+        "NOTION_DATABASE_ID": "test-db-id",
+        "MASTER_RESUME_PATH": "/tmp/test.tex",
+    }
+
+    # Temporarily set env vars
+    original_env: dict[str, str | None] = {}
+    for key, value in test_env.items():
+        original_env[key] = os.environ.get(key)
+        os.environ[key] = value
+
+    try:
+        settings = Settings()  # type: ignore[call-arg]
+        assert settings.LOG_LEVEL is not None
+    finally:
+        # Restore original environment
+        for key in test_env:
+            if original_env[key] is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_env[key]  # type: ignore[assignment]
 
 
 def test_logger_instance() -> None:
@@ -49,10 +73,33 @@ def test_logger_instance() -> None:
 
 def test_main_runs_and_logs(caplog: pytest.LogCaptureFixture) -> None:
     """Test that src.main.main runs and logs expected messages."""
-    with caplog.at_level("INFO"):
-        run_main_app()
-    assert "Application starting..." in caplog.text
-    assert "Application has finished its current task." in caplog.text
-    assert "This is a success message!" in caplog.text
-    # Check for the error log from the ZeroDivisionError example
-    assert "An error occurred during calculation in main." in caplog.text
+    import os
+
+    test_env = {
+        "OPENAI_API_KEY": "test-key",
+        "NOTION_API_KEY": "test-notion-key",
+        "NOTION_DATABASE_ID": "test-db-id",
+        "MASTER_RESUME_PATH": "/tmp/test.tex",
+    }
+
+    # Temporarily set env vars
+    original_env: dict[str, str | None] = {}
+    for key, value in test_env.items():
+        original_env[key] = os.environ.get(key)
+        os.environ[key] = value
+
+    try:
+        with caplog.at_level("INFO"):
+            run_main_app()
+        assert "Application starting..." in caplog.text
+        assert "Application has finished its current task." in caplog.text
+        assert "This is a success message!" in caplog.text
+        # Check for the error log from the ZeroDivisionError example
+        assert "An error occurred during calculation in main." in caplog.text
+    finally:
+        # Restore original environment
+        for key in test_env:
+            if original_env[key] is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_env[key]  # type: ignore[assignment]

@@ -1,27 +1,33 @@
 import sys
+import os
 
 from loguru import logger
 
-from src.core.config import Settings
 
-# Create settings instance for logger configuration
-settings = Settings()  # type: ignore[call-arg]
+def _configure_logger() -> None:
+    """Configure loguru logger with settings from environment or defaults."""
+    # Use environment variable or default for log level
+    log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 
-# Remove default handler and add a new one with the desired format and level
-logger.remove()
-logger.add(
-    sys.stderr,  # Sink: where the log messages are sent (e.g., sys.stderr, file path)
-    level=settings.LOG_LEVEL.upper(),  # Minimum log level
-    format=(
-        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-        "<level>{message}</level>"
-    ),
-    colorize=True,  # Enable colorized output if the sink supports it
-    backtrace=True,  # Enable enhanced traceback for exceptions
-    diagnose=True,  # Add extended diagnostic information on errors
-)
+    # Remove default handler and add a new one with the desired format and level
+    logger.remove()
+    logger.add(
+        sys.stderr,  # Sink: where the log messages are sent (e.g., sys.stderr, file path)
+        level=log_level,  # Minimum log level
+        format=(
+            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+            "<level>{message}</level>"
+        ),
+        colorize=True,  # Enable colorized output if the sink supports it
+        backtrace=True,  # Enable enhanced traceback for exceptions
+        diagnose=True,  # Add extended diagnostic information on errors
+    )
+
+
+# Configure logger on import
+_configure_logger()
 
 # Optional: Add a file sink if you want to log to a file as well
 # from pathlib import Path
