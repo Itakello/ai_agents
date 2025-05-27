@@ -2,13 +2,16 @@ import sys
 
 from loguru import logger
 
-from src.core.config import settings  # Assuming your config is in src.core.config
+from src.core.config import Settings
+
+# Create settings instance for logger configuration
+settings = Settings()  # type: ignore[call-arg]
 
 # Remove default handler and add a new one with the desired format and level
 logger.remove()
 logger.add(
     sys.stderr,  # Sink: where the log messages are sent (e.g., sys.stderr, file path)
-    level=settings.log_level.upper(),  # Minimum log level
+    level=settings.LOG_LEVEL.upper(),  # Minimum log level
     format=(
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "

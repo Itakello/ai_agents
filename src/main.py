@@ -1,11 +1,14 @@
-from src.core.config import settings
+from src.core.config import Settings
 from src.core.logger import logger  # Import the configured loguru logger
+
+# Create settings instance
+settings = Settings()  # type: ignore[call-arg]
 
 
 def main() -> None:
     """Main function for the application."""
     logger.info("Application starting...")
-    logger.debug(f"Current LOG_LEVEL: {settings.log_level}")
+    logger.debug(f"Current LOG_LEVEL: {settings.LOG_LEVEL}")
 
     # TODO: Add your application logic here
     logger.info("Application has finished its current task.")
