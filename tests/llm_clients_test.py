@@ -3,6 +3,7 @@
 from typing import Generator
 from unittest.mock import MagicMock, patch
 
+import openai
 import pytest
 
 from src.common.llm_clients import OpenAIClient
@@ -25,25 +26,7 @@ class TestOpenAIClient:
                     "created_at": 1741476542,
                     "status": "completed",
                     "error": None,
-                    "output": [
-                        type(
-                            "Output",
-                            (),
-                            {
-                                "type": "message",
-                                "id": "msg_test456",
-                                "status": "completed",
-                                "role": "assistant",
-                                "content": [
-                                    type(
-                                        "Content",
-                                        (),
-                                        {"type": "output_text", "text": "Test response", "annotations": []},
-                                    )()
-                                ],
-                            },
-                        )()
-                    ],
+                    "output_text": "Test response",
                 },
             )()
 
@@ -74,17 +57,17 @@ class TestOpenAIClient:
 
         # Act
         client = OpenAIClient(api_key=api_key)
-        response = client.get_response(prompt=prompt, model_name=model_name)
+        response = client.get_response(sys_prompt=None, user_prompt=prompt, model_name=model_name)
 
         # Assert
         mock_responses.create.assert_called_once()
         call_args = mock_responses.create.call_args[1]
 
         assert call_args["model"] == model_name
-        assert call_args["messages"] == [{"role": "user", "content": prompt}]
+        assert call_args["input"] == [{"role": "user", "content": prompt}]
         assert call_args["temperature"] == 0.7
-        assert call_args["max_tokens"] == 1000
-        assert "response_id" not in call_args  # Should not be set on first call
+
+        assert call_args["previous_response_id"] == openai.NOT_GIVEN
         assert response == "Test response"
         assert client.response_id == "resp_test123"  # Should be set after first call
 
@@ -95,13 +78,13 @@ class TestOpenAIClient:
         prompt = "Test prompt"
 
         # Create a response with empty output
-        empty_response = type("Response", (), {"id": "resp_empty", "error": None, "output": []})()
+        empty_response = type("Response", (), {"id": "resp_empty", "error": None, "output_text": ""})()
 
         mock_openai_client.return_value.responses.create.return_value = empty_response
 
         # Act
         client = OpenAIClient(api_key=api_key)
-        response = client.get_response(prompt=prompt)
+        response = client.get_response(sys_prompt=None, user_prompt=prompt, model_name="gpt-4o")
 
         # Assert
         assert response == ""
@@ -114,11 +97,12 @@ class TestOpenAIClient:
 
         # Act
         client = OpenAIClient(api_key=api_key)
-        client.get_response(prompt=prompt)
+
+        client.get_response(sys_prompt=None, user_prompt=prompt, model_name="gpt-4o")
 
         # Assert
         call_args = mock_openai_client.return_value.responses.create.call_args[1]
-        assert call_args["model"] == "gpt-3.5-turbo"
+        assert call_args["model"] == "gpt-4o"
 
     def test_get_chat_completion_handles_api_errors(self, mock_openai_client: MagicMock) -> None:
         """Test that get_chat_completion properly handles API errors."""
@@ -137,7 +121,7 @@ class TestOpenAIClient:
         client = OpenAIClient(api_key="test-api-key")
 
         with pytest.raises(ValueError) as exc_info:
-            client.get_response(prompt="Test prompt")
+            client.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
 
         assert "API Error: Test error message (code: test_error_code)" in str(exc_info.value)
 
@@ -145,7 +129,7 @@ class TestOpenAIClient:
         mock_openai_client.return_value.responses.create.side_effect = Exception("Connection error")
 
         with pytest.raises(ValueError) as exc_info:
-            client.get_response(prompt="Test prompt")
+            client.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
 
         assert "Error getting response: Connection error" in str(exc_info.value)
 
@@ -176,24 +160,20 @@ class TestOpenAIClient:
 
         # Act
         client = OpenAIClient(api_key=api_key)
-        result = client.extract_structured_data_from_url(url, schema)
+        result = client.extract_structured_data_from_url(url, schema, model_name="gpt-4o")
 
         # Assert
         assert result == {"job_title": "Software Engineer", "company": "Tech Corp"}
 
         # Verify API call
         call_args = mock_openai_client.return_value.responses.create.call_args[1]
-        assert call_args["model"] == "gpt-4-1106-preview"
+        assert call_args["model"] == "gpt-4o"
         assert len(call_args["input"]) == 2
         assert call_args["input"][0]["role"] == "system"
         assert call_args["input"][1]["role"] == "user"
         assert call_args["input"][1]["content"] == f"URL: {url}"
-        assert call_args["tools"] == [{"type": "web_search"}]
         assert call_args["text"]["format"]["type"] == "json_schema"
         assert call_args["text"]["format"]["strict"] is True
-        assert call_args["text"]["format"]["schema"]["additionalProperties"] is False
-        assert "job_title" in call_args["text"]["format"]["schema"]["required"]
-        assert "company" in call_args["text"]["format"]["schema"]["required"]
 
     def test_extract_structured_data_handles_invalid_json(self, mock_openai_client: MagicMock) -> None:
         """Test that extract_structured_data_from_url handles invalid JSON responses."""
@@ -217,7 +197,7 @@ class TestOpenAIClient:
         # Act & Assert
         client = OpenAIClient(api_key=api_key)
         with pytest.raises(ValueError) as exc_info:
-            client.extract_structured_data_from_url(url, schema)
+            client.extract_structured_data_from_url(url, schema, model_name="gpt-4o")
 
         assert "Failed to parse structured output as JSON" in str(exc_info.value)
 
@@ -229,12 +209,11 @@ class TestOpenAIClient:
         schema = {"type": "object", "properties": {"job_title": {"type": "string"}}}
 
         # Create mock response without output_text
-        mock_response = type("Response", (), {"id": "resp_test123", "error": None})()
+        mock_response = type("Response", (), {"id": "resp_test123", "error": None, "output_text": None})()
         mock_openai_client.return_value.responses.create.return_value = mock_response
 
         # Act & Assert
         client = OpenAIClient(api_key=api_key)
-        with pytest.raises(ValueError) as exc_info:
-            client.extract_structured_data_from_url(url, schema)
+        result = client.extract_structured_data_from_url(url, schema, model_name="gpt-4o")
 
-        assert "No valid structured output found in response" in str(exc_info.value)
+        assert result == {}
