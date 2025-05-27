@@ -38,7 +38,7 @@ def test_another_example_skipped() -> None:
 
 
 def test_settings_load() -> None:
-    assert settings.log_level is not None
+    assert settings.LOG_LEVEL is not None
 
 
 def test_logger_instance() -> None:

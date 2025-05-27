@@ -5,7 +5,7 @@ from src.core.logger import logger  # Import the configured loguru logger
 def main() -> None:
     """Main function for the application."""
     logger.info("Application starting...")
-    logger.debug(f"Current LOG_LEVEL: {settings.log_level}")
+    logger.debug(f"Current LOG_LEVEL: {settings.LOG_LEVEL}")
 
     # TODO: Add your application logic here
     logger.info("Application has finished its current task.")

@@ -8,7 +8,7 @@ from src.core.config import settings  # Assuming your config is in src.core.conf
 logger.remove()
 logger.add(
     sys.stderr,  # Sink: where the log messages are sent (e.g., sys.stderr, file path)
-    level=settings.log_level.upper(),  # Minimum log level
+    level=settings.LOG_LEVEL.upper(),  # Minimum log level
     format=(
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
