@@ -5,7 +5,7 @@ from typing import Any, Generator
 import pytest
 from loguru import logger as base_loguru_logger
 
-from src.core.config import settings
+from src.core.config import Settings
 from src.core.logger import logger as app_logger
 from src.main import main as run_main_app
 
@@ -38,6 +38,7 @@ def test_another_example_skipped() -> None:
 
 
 def test_settings_load() -> None:
+    settings = Settings()  # type: ignore[call-arg]
     assert settings.LOG_LEVEL is not None
 
 

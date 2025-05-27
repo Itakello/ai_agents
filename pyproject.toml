@@ -29,6 +29,7 @@ dependencies = [
     "pydantic-settings",
     "python-dotenv",
     "openai",
+    "notion_client",
 ]
 
 [project.optional-dependencies]
@@ -114,7 +115,7 @@ addopts = "-ra -q --cov=src --cov-report=term-missing --mypy"
 testpaths = [
     "tests",
 ]
-python_files = "test_*.py"
+python_files = "*_test.py"
 python_classes = "Test*"
 python_functions = "test_*"
 # Filter out warnings that are common but not always actionable

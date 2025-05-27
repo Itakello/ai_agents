@@ -2,7 +2,10 @@ import sys
 
 from loguru import logger
 
-from src.core.config import settings  # Assuming your config is in src.core.config
+from src.core.config import Settings
+
+# Create settings instance for logger configuration
+settings = Settings()  # type: ignore[call-arg]
 
 # Remove default handler and add a new one with the desired format and level
 logger.remove()

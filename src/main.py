@@ -1,5 +1,8 @@
-from src.core.config import settings
+from src.core.config import Settings
 from src.core.logger import logger  # Import the configured loguru logger
+
+# Create settings instance
+settings = Settings()  # type: ignore[call-arg]
 
 
 def main() -> None:

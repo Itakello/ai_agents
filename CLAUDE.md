@@ -31,12 +31,17 @@ pip install -r requirements.txt -r requirements-dev.txt  # Install all dependenc
 
 ## Architecture Overview
 
-This is a Python project template with a modular structure:
+This is a Python project template with a modular structure designed for AI agent applications:
 
 ### Core Components
 - **src/core/config.py**: Centralized configuration using Pydantic Settings with .env file support
 - **src/core/logger.py**: Pre-configured Loguru logger with structured formatting
 - **src/main.py**: Application entry point that demonstrates config and logging usage
+
+### Common Services
+- **src/common/llm_clients.py**: OpenAI client implementation with Responses API support and structured data extraction
+- **src/common/notion_service.py**: Notion API service for database interactions and page management
+- **src/common/utils.py**: Shared utility functions for file operations
 
 ### Configuration System
 The project uses Pydantic Settings for configuration management:
@@ -44,6 +49,12 @@ The project uses Pydantic Settings for configuration management:
 - Settings defined with Field aliases for env var mapping
 - Type validation and defaults handled by Pydantic
 - Access via `from src.core.config import settings`
+
+Required environment variables:
+- `OPENAI_API_KEY`: OpenAI API key
+- `NOTION_API_KEY`: Notion integration token
+- `NOTION_DATABASE_ID`: Target Notion database ID
+- `MASTER_RESUME_PATH`: Path to master resume LaTeX file
 
 ### Logging System
 Loguru is configured with:
@@ -62,6 +73,7 @@ Loguru is configured with:
 ```
 src/
 ├── core/           # Core utilities (config, logging)
+├── common/         # Shared services (LLM clients, Notion, utilities)
 ├── main.py         # Application entry point
 tests/              # Test files following pytest conventions
 ```

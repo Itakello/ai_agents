@@ -23,9 +23,21 @@ class TestSettings:
         ]:
             monkeypatch.delenv(key, raising=False)
 
+        # Also clear any optional environment variables that might interfere
+        for key in [
+            "LOG_LEVEL",
+            "PDFLATEX_COMMAND",
+            "LATEXDIFF_COMMAND",
+            "DEFAULT_MODEL_NAME",
+            "DEFAULT_OUTPUT_DIR",
+            "TEST_NOTION_PAGE_ID",
+        ]:
+            monkeypatch.delenv(key, raising=False)
+
         with pytest.raises(ValidationError):
             # This will try to create settings with missing required fields
-            Settings()  # type: ignore[call-arg]  # We're testing the error case
+            # Disable .env file loading to ensure we test missing variables
+            Settings(_env_file=None)  # type: ignore[call-arg]
 
     def test_required_settings_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that settings are loaded correctly from environment variables."""
