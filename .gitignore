@@ -1,0 +1,69 @@
+# Environment variables
+.env
+*.env.local
+*.env.*.local
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.manifest
+*.spec
+
+# PyInstaller
+#  Usually these files are written by a script interesting to change.
+*.manifest
+*.spec
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# pytest
+.pytest_cache/
+.coverage
+
+# Direnv
+.direnv/
+layout_python/
+
+# Logs
+logs/
+*.log
+
+# Data files (if local and not version controlled)
+# data/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Ruff
+.ruff_cache/

@@ -1,0 +1,122 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "python_project_template"
+version = "0.1.0"
+description = "A comprehensive template for starting Python projects, with best practices and common tools pre-configured."
+readme = "README.md"
+authors = [
+    { name = "Itakello", email = "me@mstefan.dev" },
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: Apache Software License", # Or your chosen license
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+    "loguru",
+    "pydantic",
+    "pydantic-settings",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "pytest-cov",
+    "pytest-mypy",
+    "pre-commit",
+]
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.ruff]
+# Enable Pyflakes and pycodestyle errors by default.
+# For a full list of rules, see: https://docs.astral.sh/ruff/rules/
+
+line-length = 120
+target-version = "py313"
+
+# Lint settings
+[tool.ruff.lint]
+# Ignore line length errors (E501)
+ignore = ["E501"]
+select = ["E", "F", "W", "I"] # E=pycodestyle errors, F=pyflakes, W=pycodestyle warnings, I=isort
+
+# Allow autofix for all enabled rules (when `--fix` is used).
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = '^(_(\d+|[a-zA-Z0-9_]*[a-zA-Z0-9])?)$'
+
+# Format settings
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+[tool.pytest.ini_options]
+# minversion = "6.0"
+addopts = "-ra -q --cov=src --cov-report=term-missing --mypy"
+testpaths = [
+    "tests",
+]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+# Filter out warnings that are common but not always actionable
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
