@@ -77,15 +77,25 @@ class OpenAIClient:
                 if isinstance(response.output, str):
                     return str(response.output)
 
-                # Case 2: Output object with content
+                # Case 2: Output is a list (from Responses API)
+                if isinstance(response.output, list) and len(response.output) > 0:
+                    output_item = response.output[0]
+                    # Check for content array in the output item
+                    if hasattr(output_item, "content") and isinstance(output_item.content, list):
+                        if len(output_item.content) > 0:
+                            content_item = output_item.content[0]
+                            if hasattr(content_item, "text"):
+                                return str(content_item.text)
+
+                # Case 3: Output object with content
                 if hasattr(response.output, "content"):
                     return str(response.output.content)
 
-                # Case 3: Output with text property
+                # Case 4: Output with text property
                 if hasattr(response.output, "text"):
                     return str(response.output.text)
 
-                # Case 4: Output with output_text property
+                # Case 5: Output with output_text property
                 if hasattr(response.output, "output_text"):
                     return str(response.output.output_text)
 
