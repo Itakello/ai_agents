@@ -30,7 +30,8 @@ repos:
             pydantic-settings,
             pytest,
             loguru,
-            openai
+            openai,
+            notion-client,
         ]
         args: ["--config-file=pyproject.toml"]
 
