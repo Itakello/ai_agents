@@ -6,6 +6,7 @@ with support for .env files. It uses pydantic for validation and type conversion
 
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,10 +35,10 @@ class Settings(BaseSettings):
     )
 
     # Required settings
-    OPENAI_API_KEY: str
-    NOTION_API_KEY: str
-    NOTION_DATABASE_ID: str
-    MASTER_RESUME_PATH: Path
+    OPENAI_API_KEY: str = Field(..., description="API key for OpenAI")
+    NOTION_API_KEY: str = Field(..., description="API key for Notion")
+    NOTION_DATABASE_ID: str = Field(..., description="ID of the Notion database to use")
+    MASTER_RESUME_PATH: Path = Field(..., description="Path to the master resume .tex file")
 
     # Optional settings with defaults
     LOG_LEVEL: str = "INFO"

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from pydantic_settings import SettingsConfigDict
 
 # Import the module under test
 from src.core.config import Settings
@@ -35,9 +36,17 @@ class TestSettings:
             monkeypatch.delenv(key, raising=False)
 
         with pytest.raises(ValidationError):
+            # Create settings class that doesn't load from .env file
+            class TestSettings(Settings):
+                model_config = SettingsConfigDict(
+                    env_file=None,
+                    env_file_encoding="utf-8",
+                    extra="ignore",
+                    env_nested_delimiter="__",
+                )
+
             # This will try to create settings with missing required fields
-            # Disable .env file loading to ensure we test missing variables
-            Settings(_env_file=None)  # type: ignore[call-arg]
+            TestSettings()  # type: ignore[call-arg]
 
     def test_required_settings_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that settings are loaded correctly from environment variables."""
