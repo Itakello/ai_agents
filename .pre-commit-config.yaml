@@ -29,7 +29,8 @@ repos:
             pydantic,
             pydantic-settings,
             pytest,
-            loguru
+            loguru,
+            openai
         ]
         args: ["--config-file=pyproject.toml"]
 
