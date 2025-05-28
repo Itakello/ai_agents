@@ -25,7 +25,7 @@ def _configure_logger() -> None:
     """Configure loguru logger with settings from environment or defaults."""
     # Load .env file first
     _load_env_file()
-    
+
     # Use environment variable or default for log level
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 
