@@ -100,7 +100,9 @@ def test_main_runs_and_logs(caplog: pytest.LogCaptureFixture) -> None:
                 patch("src.main.convert_openai_response_to_notion_update") as mock_convert,
             ):
                 # Setup mocks
-                mock_args = type("Args", (), {"job_url": "https://test.com", "model": "gpt-4o", "method": "openai_web_search"})()
+                mock_args = type(
+                    "Args", (), {"job_url": "https://test.com", "model": "gpt-4o", "method": "openai_web_search"}
+                )()
                 mock_parse_args.return_value = mock_args
 
                 mock_notion_instance = mock_notion.return_value

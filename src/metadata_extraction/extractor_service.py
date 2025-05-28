@@ -17,18 +17,19 @@ from ..common.utils import read_file_content
 from .models import create_openai_schema_from_notion_database
 
 try:
-    from crawl4ai import WebCrawler  # type: ignore[import-untyped]
+    from crawl4ai import WebCrawler  # type: ignore[import-untyped,import-not-found]
 except ImportError:
     WebCrawler = None
 
 try:
-    from scrapegraphai.graphs import SmartScraperGraph  # type: ignore[import-untyped]
+    from scrapegraphai.graphs import SmartScraperGraph  # type: ignore[import-untyped,import-not-found]
 except ImportError:
     SmartScraperGraph = None
 
 
 class ExtractionMethod(Enum):
     """Available extraction methods."""
+
     OPENAI_WEB_SEARCH = "openai_web_search"
     CRAWL4AI_PLUS_GPT = "crawl4ai_plus_gpt"
     CRAWL4AI_DIRECT = "crawl4ai_direct"
@@ -117,7 +118,7 @@ class ExtractorService:
         job_url: str,
         notion_database_schema: dict[str, Any],
         model_name: str,
-        extraction_method: ExtractionMethod = ExtractionMethod.OPENAI_WEB_SEARCH
+        extraction_method: ExtractionMethod = ExtractionMethod.OPENAI_WEB_SEARCH,
     ) -> dict[str, Any]:
         """Extract structured metadata from a job posting URL.
 
@@ -301,7 +302,7 @@ Return only the JSON object, no additional text or formatting."""
         extraction_schema = {
             "type": "object",
             "properties": openai_schema["properties"],
-            "required": openai_schema.get("required", [])
+            "required": openai_schema.get("required", []),
         }
 
         # Use Crawl4AI with LLM extraction
@@ -311,7 +312,7 @@ Return only the JSON object, no additional text or formatting."""
                 extraction_strategy="llm",
                 extraction_schema=extraction_schema,
                 llm_provider="openai",
-                llm_model=model_name
+                llm_model=model_name,
             )
 
             if not result.success:
@@ -324,7 +325,9 @@ Return only the JSON object, no additional text or formatting."""
     ) -> dict[str, Any]:
         """Extract metadata using ScrapeGraphAI for crawling + GPT for extraction."""
         if SmartScraperGraph is None:
-            raise ExtractorServiceError("ScrapeGraphAI is not installed. Please install it with: pip install scrapegraphai")
+            raise ExtractorServiceError(
+                "ScrapeGraphAI is not installed. Please install it with: pip install scrapegraphai"
+            )
 
         # Use ScrapeGraphAI to get raw content first
         graph_config = {
@@ -339,7 +342,7 @@ Return only the JSON object, no additional text or formatting."""
         smart_scraper_graph = SmartScraperGraph(
             prompt="Extract the full job posting content including title, description, requirements, and company information",
             source=job_url,
-            config=graph_config
+            config=graph_config,
         )
 
         scraped_content = smart_scraper_graph.run()
@@ -372,7 +375,9 @@ Return only the JSON object, no additional text or formatting."""
     ) -> dict[str, Any]:
         """Extract metadata using ScrapeGraphAI's direct extraction capabilities."""
         if SmartScraperGraph is None:
-            raise ExtractorServiceError("ScrapeGraphAI is not installed. Please install it with: pip install scrapegraphai")
+            raise ExtractorServiceError(
+                "ScrapeGraphAI is not installed. Please install it with: pip install scrapegraphai"
+            )
 
         # Build field descriptions for the prompt
         field_descriptions = self._build_field_descriptions(notion_database_schema)
@@ -392,11 +397,7 @@ Return only the JSON object, no additional text or formatting."""
         }
 
         # Use ScrapeGraphAI for direct extraction
-        smart_scraper_graph = SmartScraperGraph(
-            prompt=extraction_prompt,
-            source=job_url,
-            config=graph_config
-        )
+        smart_scraper_graph = SmartScraperGraph(prompt=extraction_prompt, source=job_url, config=graph_config)
 
         result = smart_scraper_graph.run()
 
@@ -410,7 +411,8 @@ Return only the JSON object, no additional text or formatting."""
             except json.JSONDecodeError:
                 # If direct JSON parsing fails, try to extract JSON from the string
                 import re
-                json_match = re.search(r'\{.*\}', result, re.DOTALL)
+
+                json_match = re.search(r"\{.*\}", result, re.DOTALL)
                 if json_match:
                     return dict(json.loads(json_match.group()))
                 else:
@@ -422,9 +424,7 @@ Return only the JSON object, no additional text or formatting."""
         """Build field descriptions from Notion schema."""
         # Filter out read-only properties
         read_only_types = {"created_time", "last_edited_time", "formula", "rollup"}
-        editable_schema = {
-            name: props for name, props in schema.items() if props.get("type") not in read_only_types
-        }
+        editable_schema = {name: props for name, props in schema.items() if props.get("type") not in read_only_types}
 
         field_descriptions = []
         for field_name, field_props in editable_schema.items():

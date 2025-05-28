@@ -132,4 +132,3 @@ class TestOpenAIClient:
             client.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
 
         assert "Error getting response: Connection error" in str(exc_info.value)
-

@@ -15,7 +15,7 @@ def _load_env_file() -> None:
                 if line and not line.startswith("#") and "=" in line:
                     key, value = line.split("=", 1)
                     # Remove quotes if present
-                    value = value.strip('"\'')
+                    value = value.strip("\"'")
                     # Only set if not already in environment
                     if key not in os.environ:
                         os.environ[key] = value

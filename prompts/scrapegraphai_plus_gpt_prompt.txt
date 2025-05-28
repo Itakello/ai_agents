@@ -9,26 +9,26 @@ Your task is to extract structured metadata from this content.
 Scraped Job Posting Content: {{CONTENT}}
 
 ## OUTPUT FORMAT
-Return **only** valid JSON that passes the following JSON-Schema **exactly** (no extra keys, no commentary).  
+Return **only** valid JSON that passes the following JSON-Schema **exactly** (no extra keys, no commentary).
 
-## INTERNAL THOUGHT PROCESS  *(keep secret – do NOT output!)*  
-1. Read the provided scraped content carefully.  
-2. Build a scratch "notes" object where you dump **all** candidate values for every property you notice, including duplicates and synonyms.  
-   - When extracting arrays (languages, tools, libraries, locations, benefits, …) - look at  
-     – bullet and numbered lists,  
-     – comma-separated phrases,  
-     – ad-hoc mentions anywhere else.  
-   - Canonicalise obvious synonyms (e.g. "Node.js" = "Node", "PostgreSQL" = "Postgres").  
-3. Deduplicate each array, preserving case & spelling as in the posting.  
-4. For missing properties use `null`.  
-5. Copy the condensed, deduped values into the **output JSON object** that matches the schema.  
+## INTERNAL THOUGHT PROCESS  *(keep secret – do NOT output!)*
+1. Read the provided scraped content carefully.
+2. Build a scratch "notes" object where you dump **all** candidate values for every property you notice, including duplicates and synonyms.
+   - When extracting arrays (languages, tools, libraries, locations, benefits, …) - look at
+     – bullet and numbered lists,
+     – comma-separated phrases,
+     – ad-hoc mentions anywhere else.
+   - Canonicalise obvious synonyms (e.g. "Node.js" = "Node", "PostgreSQL" = "Postgres").
+3. Deduplicate each array, preserving case & spelling as in the posting.
+4. For missing properties use `null`.
+5. Copy the condensed, deduped values into the **output JSON object** that matches the schema.
 6. **Self-validate**: ensure required fields exist, enum values are legal, data types match, arrays are exhaustive.
 
 ## RULES
-* Be strictly factual – no inference beyond the provided content.  
-* Do not abbreviate numerical ranges ("€80 000 – €90 000" ➜ keep the full string).  
-* Never invent data; if unsure, return `null`.  
-* You may produce an empty array if nothing is found for that field.  
+* Be strictly factual – no inference beyond the provided content.
+* Do not abbreviate numerical ranges ("€80 000 – €90 000" ➜ keep the full string).
+* Never invent data; if unsure, return `null`.
+* You may produce an empty array if nothing is found for that field.
 * After the JSON object, output **nothing else**.
 
 ## BEGIN

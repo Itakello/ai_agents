@@ -144,7 +144,7 @@ class OpenAIClient:
             )
 
             # Make the API call using proper parameter names
-            response = self.client.responses.create(
+            response = self.client.responses.create(  # type: ignore[call-overload]
                 input=messages,
                 model=model_name,
                 text=text_config,
@@ -170,4 +170,3 @@ class OpenAIClient:
             return dict(json.loads(response.output_text)) if response.output_text else {}
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse structured output as JSON: {str(e)}") from e
-

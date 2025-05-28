@@ -83,7 +83,7 @@ def main() -> None:
             job_url=job_url,
             notion_database_schema=database_schema,
             model_name=model_name,
-            extraction_method=extraction_method
+            extraction_method=extraction_method,
         )
         logger.success("Metadata extraction completed!")
 
@@ -112,9 +112,7 @@ def main() -> None:
 
 
 def display_results(
-    extracted_metadata: dict[str, Any],
-    notion_update: dict[str, Any],
-    extraction_method: ExtractionMethod
+    extracted_metadata: dict[str, Any], notion_update: dict[str, Any], extraction_method: ExtractionMethod
 ) -> None:
     """Display the extracted metadata and Notion-formatted results in the CLI.
 

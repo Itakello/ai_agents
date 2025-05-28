@@ -120,10 +120,12 @@ class TestMain:
             job_url="https://example.com/job",
             notion_database_schema=mock_database_schema,
             model_name="gpt-4o",
-            extraction_method=ExtractionMethod.OPENAI_WEB_SEARCH
+            extraction_method=ExtractionMethod.OPENAI_WEB_SEARCH,
         )
         mock_convert.assert_called_once_with(mock_extracted_metadata, mock_database_schema)
-        mock_display_results.assert_called_once_with(mock_extracted_metadata, mock_notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
+        mock_display_results.assert_called_once_with(
+            mock_extracted_metadata, mock_notion_update, ExtractionMethod.OPENAI_WEB_SEARCH
+        )
 
     @patch("src.main.parse_arguments")
     def test_main_missing_job_url(self, mock_parse_arguments: MagicMock) -> None:
@@ -266,7 +268,6 @@ class TestDisplayResults:
         assert "salary: 100000" in output
         assert "is_remote: True" in output
 
-
     def test_display_results_with_list_values(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test display_results with list values in metadata."""
         extracted_metadata = {
@@ -295,7 +296,6 @@ class TestDisplayResults:
         # Check that list values are properly formatted
         assert "skills: Python, JavaScript, Docker" in output
         assert "job_title: Full Stack Developer" in output
-
 
     def test_display_results_empty_metadata(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test display_results with empty metadata."""
