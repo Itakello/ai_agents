@@ -168,10 +168,9 @@ class TestOpenAIClient:
         # Verify API call
         call_args = mock_openai_client.return_value.responses.create.call_args[1]
         assert call_args["model"] == "gpt-4o"
-        assert len(call_args["input"]) == 2
+        assert len(call_args["input"]) == 1
         assert call_args["input"][0]["role"] == "system"
-        assert call_args["input"][1]["role"] == "user"
-        assert call_args["input"][1]["content"] == f"URL: {url}"
+        assert url in call_args["input"][0]["content"]
         assert call_args["text"]["format"]["type"] == "json_schema"
         assert call_args["text"]["format"]["strict"] is True
 

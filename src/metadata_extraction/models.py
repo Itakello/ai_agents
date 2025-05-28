@@ -17,44 +17,55 @@ def notion_property_to_openai_schema(notion_property: dict[str, Any]) -> dict[st
         OpenAI-compatible JSON Schema definition
     """
     property_type = notion_property.get("type")
+    description = notion_property.get("description", "")
+    property: dict[str, Any] = {}
 
     match property_type:
         case "rich_text" | "title":
-            return {"type": "string"}
+            property = {"type": "string"}
         case "number":
-            return {"type": "number"}
+            property = {"type": "number"}
         case "checkbox":
-            return {"type": "boolean"}
+            property = {"type": "boolean"}
         case "select":
             options = notion_property.get("select", {}).get("options", [])
             if options:
-                return {"type": "string", "enum": [option["name"] for option in options]}
-            return {"type": "string"}
+                property = {"type": "string", "enum": [option["name"] for option in options]}
+            else:
+                property = {"type": "string"}
         case "status":
             options = notion_property.get("status", {}).get("options", [])
             if options:
-                return {"type": "string", "enum": [option["name"] for option in options]}
-            return {"type": "string"}
+                property = {"type": "string", "enum": [option["name"] for option in options]}
+            else:
+                property = {"type": "string"}
         case "multi_select":
             options = notion_property.get("multi_select", {}).get("options", [])
             if options:
-                return {"type": "array", "items": {"type": "string", "enum": [option["name"] for option in options]}}
-            return {"type": "array", "items": {"type": "string"}}
+                property = {
+                    "type": "array",
+                    "items": {"type": "string", "enum": [option["name"] for option in options]},
+                }
+            else:
+                property = {"type": "array", "items": {"type": "string"}}
         case "date":
-            return {"type": "string", "format": "date"}
+            property = {"type": "string", "format": "date"}
         case "email":
-            return {"type": "string", "format": "email"}
+            property = {"type": "string", "format": "email"}
         case "phone_number":
-            return {"type": "string"}
+            property = {"type": "string"}
         case "url":
-            return {"type": "string", "pattern": r"^(https?)://[^\s/$.?#].[^\s]*$"}
+            property = {"type": "string", "pattern": r"^(https?)://[^\s/$.?#].[^\s]*$"}
         case "people":
-            return {"type": "array", "items": {"type": "string"}}
+            property = {"type": "array", "items": {"type": "string"}}
         case "files":
-            return {"type": "array", "items": {"type": "string", "format": "uri"}}
+            property = {"type": "array", "items": {"type": "string", "format": "uri"}}
         case _:
             # Default to string for unsupported types
-            return {"type": "string"}
+            property = {"type": "string"}
+    if description:
+        property["description"] = description
+    return property
 
 
 def openai_data_to_notion_property(value: Any, property_type: str) -> dict[str, Any]:
