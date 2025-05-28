@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.main import display_results, main, parse_arguments
+from src.metadata_extraction.extractor_service import ExtractionMethod
 
 
 class TestParseArguments:
@@ -17,6 +18,7 @@ class TestParseArguments:
         args = parse_arguments(default_model="gpt-4-test")
         assert args.job_url == "https://example.com/job"
         assert args.model == "gpt-4-test"
+        assert args.method == "openai_web_search"
 
     @patch("sys.argv", ["main.py", "https://example.com/job", "--model", "gpt-3.5-turbo"])
     def test_parse_arguments_with_custom_model(self) -> None:
@@ -24,6 +26,15 @@ class TestParseArguments:
         args = parse_arguments(default_model="gpt-4-test")
         assert args.job_url == "https://example.com/job"
         assert args.model == "gpt-3.5-turbo"
+        assert args.method == "openai_web_search"
+
+    @patch("sys.argv", ["main.py", "https://example.com/job", "--method", "crawl4ai_plus_gpt"])
+    def test_parse_arguments_with_custom_method(self) -> None:
+        """Test parsing arguments with custom extraction method."""
+        args = parse_arguments(default_model="gpt-4-test")
+        assert args.job_url == "https://example.com/job"
+        assert args.model == "gpt-4-test"
+        assert args.method == "crawl4ai_plus_gpt"
 
     @patch("sys.argv", ["main.py"])
     def test_parse_arguments_missing_url(self) -> None:
@@ -57,6 +68,7 @@ class TestMain:
         mock_args = MagicMock()
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
+        mock_args.method = "openai_web_search"
         mock_parse_arguments.return_value = mock_args
 
         # Setup settings mock
@@ -105,10 +117,13 @@ class TestMain:
 
         mock_notion_service_instance.get_database_schema.assert_called_once()
         mock_extractor_service_instance.extract_metadata_from_job_url.assert_called_once_with(
-            job_url="https://example.com/job", notion_database_schema=mock_database_schema, model_name="gpt-4o"
+            job_url="https://example.com/job",
+            notion_database_schema=mock_database_schema,
+            model_name="gpt-4o",
+            extraction_method=ExtractionMethod.OPENAI_WEB_SEARCH
         )
         mock_convert.assert_called_once_with(mock_extracted_metadata, mock_database_schema)
-        mock_display_results.assert_called_once_with(mock_extracted_metadata, mock_notion_update)
+        mock_display_results.assert_called_once_with(mock_extracted_metadata, mock_notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
 
     @patch("src.main.parse_arguments")
     def test_main_missing_job_url(self, mock_parse_arguments: MagicMock) -> None:
@@ -127,6 +142,7 @@ class TestMain:
         mock_args = MagicMock()
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
+        mock_args.method = "openai_web_search"
         mock_parse_arguments.return_value = mock_args
 
         mock_settings.side_effect = Exception("Settings error")
@@ -153,6 +169,7 @@ class TestMain:
         mock_args = MagicMock()
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
+        mock_args.method = "openai_web_search"
         mock_parse_arguments.return_value = mock_args
 
         # Setup settings mock
@@ -234,7 +251,7 @@ class TestDisplayResults:
             }
         }
 
-        display_results(extracted_metadata, notion_update)
+        display_results(extracted_metadata, notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
 
         captured = capsys.readouterr()
         output = captured.out
@@ -270,7 +287,7 @@ class TestDisplayResults:
             }
         }
 
-        display_results(extracted_metadata, notion_update)
+        display_results(extracted_metadata, notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
 
         captured = capsys.readouterr()
         output = captured.out
@@ -285,7 +302,7 @@ class TestDisplayResults:
         extracted_metadata: dict[str, str] = {}
         notion_update: dict[str, Any] = {"properties": {}}
 
-        display_results(extracted_metadata, notion_update)
+        display_results(extracted_metadata, notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
 
         captured = capsys.readouterr()
         output = captured.out
@@ -303,7 +320,7 @@ class TestDisplayResults:
             }
         }
 
-        display_results(extracted_metadata, notion_update)
+        display_results(extracted_metadata, notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
 
         captured = capsys.readouterr()
         output = captured.out

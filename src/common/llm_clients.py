@@ -5,7 +5,6 @@ This module provides client implementations for different LLM providers, startin
 """
 
 import json
-from pathlib import Path
 from typing import Any
 
 import openai
@@ -16,8 +15,6 @@ from openai.types.responses import (
     ResponseTextConfigParam,
     WebSearchToolParam,
 )
-
-from .utils import read_file_content
 
 
 class OpenAIClient:
@@ -174,34 +171,3 @@ class OpenAIClient:
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse structured output as JSON: {str(e)}") from e
 
-    def extract_structured_data_from_url(
-        self,
-        url: str,
-        extraction_schema: dict[str, Any],
-        model_name: str,
-    ) -> dict[str, Any]:
-        """Extract structured data from a URL using web search and structured outputs.
-
-        Args:
-            url: The URL to extract data from.
-            extraction_schema: OpenAI JSON Schema defining the expected output structure.
-            model_name: The name of the OpenAI model to use.
-
-        Returns:
-            Structured data extracted from the URL content.
-
-        Raises:
-            ValueError: If there's an error with the API call or response parsing.
-        """
-        # Load the prompt from file
-        prompt_path = Path(__file__).parent.parent.parent / "prompts" / "sys_prompt_extract_metadata.txt"
-        sys_prompt_template = read_file_content(prompt_path)
-        sys_prompt = sys_prompt_template.replace("{{URL}}", url)
-
-        return self.get_structured_response(
-            sys_prompt=sys_prompt,
-            user_prompt=None,
-            model_name=model_name,
-            schema=extraction_schema,
-            use_web_search=True,
-        )
