@@ -10,5 +10,7 @@ Guidelines:
 - Use null for missing information
 - Ensure all required fields are populated according to the schema
 - Be precise and accurate in your extractions
+- For array properties, perform complete and exhaustive extraction
+- Ensure extraction is comprehensive and captures all relevant information from the content
 
 Return only valid JSON that conforms to the provided schema.
