@@ -79,6 +79,16 @@ def main() -> None:
         logger.info("Converting to Notion format...")
         notion_update = convert_openai_response_to_notion_update(extracted_metadata, database_schema)
 
+        # Save to Notion database
+        logger.info("Saving extracted metadata to Notion database...")
+        try:
+            saved_page = notion_service.save_or_update_extracted_data(url=job_url, extracted_data=extracted_metadata)
+            page_id = saved_page.get("id", "unknown")
+            logger.success(f"Successfully saved/updated page in Notion database (ID: {page_id})")
+        except Exception as e:
+            logger.error(f"Failed to save to Notion database: {str(e)}")
+            # Continue execution to show results even if saving fails
+
         # Display results in CLI
         display_results(extracted_metadata, notion_update)
 
@@ -108,13 +118,6 @@ def display_results(extracted_metadata: dict[str, Any], notion_update: dict[str,
         else:
             value_str = str(value)
         print(f"{key}: {value_str}")
-
-    print("\n🔄 NOTION FORMAT:")
-    print("-" * 40)
-    print(json.dumps(notion_update, indent=2, ensure_ascii=False))
-
-    print("\n✅ Ready for Notion database insertion!")
-    print("=" * 80)
 
 
 if __name__ == "__main__":
