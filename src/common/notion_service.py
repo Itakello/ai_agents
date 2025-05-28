@@ -143,7 +143,8 @@ class NotionService:
                 filter={"property": url_property_name, "url": {"equals": url}},
             )
             if isinstance(result, dict) and "results" in result and result["results"]:
-                return result["results"][0]
+                first_result = result["results"][0]
+                return first_result if isinstance(first_result, dict) else None
             return None
         except Exception as e:
             raise NotionAPIError(f"Failed to search for page with URL {url}: {str(e)}") from e
@@ -219,7 +220,7 @@ class NotionService:
         Returns:
             Properties formatted for Notion API.
         """
-        properties = {}
+        properties: dict[str, Any] = {}
 
         # Always include the URL
         properties[url_property_name] = {"url": url}
