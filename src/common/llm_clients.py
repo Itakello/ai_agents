@@ -10,7 +10,12 @@ from typing import Any
 
 import openai
 from openai import NOT_GIVEN
-from openai.types.responses import ResponseInputItemParam, ResponseInputParam, ResponseTextConfigParam
+from openai.types.responses import (
+    ResponseInputItemParam,
+    ResponseInputParam,
+    ResponseTextConfigParam,
+    WebSearchToolParam,
+)
 
 from .utils import read_file_content
 
@@ -135,7 +140,11 @@ class OpenAIClient:
 
         try:
             # Prepare tools parameter
-            tools = [{"type": "web_search_preview"}] if use_web_search else NOT_GIVEN
+            tools = (
+                [WebSearchToolParam(type="web_search_preview", search_context_size="high", user_location=None)]
+                if use_web_search
+                else NOT_GIVEN
+            )
 
             # Make the API call using proper parameter names
             response = self.client.responses.create(
