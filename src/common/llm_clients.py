@@ -95,7 +95,12 @@ class OpenAIClient:
             raise ValueError(error_msg) from e
 
     def get_structured_response(
-        self, sys_prompt: str | None, user_prompt: str | None, model_name: str, schema: dict[str, Any]
+        self,
+        sys_prompt: str | None,
+        user_prompt: str | None,
+        model_name: str,
+        schema: dict[str, Any],
+        use_web_search: bool = False,
     ) -> dict[str, Any]:
         """Get a structured response from the specified OpenAI model using the Responses API.
 
@@ -104,6 +109,7 @@ class OpenAIClient:
             user_prompt: The user prompt to send to the model.
             model_name: The name of the OpenAI model to use.
             schema: OpenAI JSON Schema defining the expected output structure.
+            use_web_search: Whether to enable web search tools (defaults to False).
 
         Returns:
             Structured data extracted from the model's response.
@@ -128,6 +134,9 @@ class OpenAIClient:
         }
 
         try:
+            # Prepare tools parameter
+            tools = [{"type": "web_search_preview"}] if use_web_search else NOT_GIVEN
+
             # Make the API call using proper parameter names
             response = self.client.responses.create(
                 input=messages,
@@ -135,6 +144,7 @@ class OpenAIClient:
                 text=text_config,
                 temperature=0.1,  # Lower temperature for more consistent extraction
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
+                tools=tools,
             )
 
             if not hasattr(response, "id"):
@@ -180,5 +190,9 @@ class OpenAIClient:
         user_prompt = f"URL: {url}"
 
         return self.get_structured_response(
-            sys_prompt=sys_prompt, user_prompt=user_prompt, model_name=model_name, schema=extraction_schema
+            sys_prompt=sys_prompt,
+            user_prompt=user_prompt,
+            model_name=model_name,
+            schema=extraction_schema,
+            use_web_search=True,
         )
