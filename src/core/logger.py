@@ -1,11 +1,31 @@
 import os
 import sys
+from pathlib import Path
 
 from loguru import logger
 
 
+def _load_env_file() -> None:
+    """Load environment variables from .env file if it exists."""
+    env_file = Path(__file__).parent.parent.parent / ".env"
+    if env_file.exists():
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    # Remove quotes if present
+                    value = value.strip('"\'')
+                    # Only set if not already in environment
+                    if key not in os.environ:
+                        os.environ[key] = value
+
+
 def _configure_logger() -> None:
     """Configure loguru logger with settings from environment or defaults."""
+    # Load .env file first
+    _load_env_file()
+    
     # Use environment variable or default for log level
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 
