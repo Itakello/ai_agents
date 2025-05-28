@@ -242,7 +242,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 "salary": {"type": "number"},
                 "is_remote": {"type": "boolean"},
             },
-            "required": [],
+            "required": ["job_title", "company", "salary", "is_remote"],
             "additionalProperties": False,
         }
         assert result == expected
@@ -263,7 +263,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
         expected = {
             "type": "object",
             "properties": {"job_title": {"type": "string"}},
-            "required": [],
+            "required": ["job_title"],
             "additionalProperties": False,
         }
         assert result == expected
@@ -286,7 +286,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
         expected = {
             "type": "object",
             "properties": {"experience_level": {"type": "string", "enum": ["Junior", "Mid", "Senior"]}},
-            "required": [],
+            "required": ["experience_level"],
             "additionalProperties": False,
         }
         assert result == expected
