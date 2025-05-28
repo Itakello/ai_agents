@@ -151,7 +151,7 @@ class OpenAIClient:
                 input=messages,
                 model=model_name,
                 text=text_config,
-                temperature=0.1,  # Lower temperature for more consistent extraction
+                temperature=0.5,
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
                 tools=tools,
             )
@@ -195,12 +195,12 @@ class OpenAIClient:
         """
         # Load the prompt from file
         prompt_path = Path(__file__).parent.parent.parent / "prompts" / "sys_prompt_extract_metadata.txt"
-        sys_prompt = read_file_content(prompt_path)
-        user_prompt = f"URL: {url}"
+        sys_prompt_template = read_file_content(prompt_path)
+        sys_prompt = sys_prompt_template.replace("{{URL}}", url)
 
         return self.get_structured_response(
             sys_prompt=sys_prompt,
-            user_prompt=user_prompt,
+            user_prompt=None,
             model_name=model_name,
             schema=extraction_schema,
             use_web_search=True,
