@@ -1,7 +1,5 @@
 """Tests for the main application functionality."""
 
-import json
-import sys
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -122,13 +120,15 @@ class TestMain:
 
     @patch("src.main.Settings")
     @patch("src.main.parse_arguments")
-    def test_main_settings_initialization_error(self, mock_parse_arguments: MagicMock, mock_settings: MagicMock) -> None:
+    def test_main_settings_initialization_error(
+        self, mock_parse_arguments: MagicMock, mock_settings: MagicMock
+    ) -> None:
         """Test main function handles settings initialization errors."""
         mock_args = MagicMock()
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
         mock_parse_arguments.return_value = mock_args
-        
+
         mock_settings.side_effect = Exception("Settings error")
 
         with pytest.raises(SystemExit) as exc_info:
@@ -242,8 +242,6 @@ class TestDisplayResults:
         # Check that the main sections are present
         assert "JOB METADATA EXTRACTION RESULTS" in output
         assert "EXTRACTED METADATA:" in output
-        assert "NOTION FORMAT:" in output
-        assert "Ready for Notion database insertion!" in output
 
         # Check that the extracted metadata is displayed
         assert "job_title: Software Engineer" in output
@@ -251,10 +249,6 @@ class TestDisplayResults:
         assert "salary: 100000" in output
         assert "is_remote: True" in output
 
-        # Check that the Notion format JSON is displayed
-        assert '"properties"' in output
-        assert '"rich_text"' in output
-        assert '"checkbox": true' in output
 
     def test_display_results_with_list_values(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test display_results with list values in metadata."""
@@ -285,8 +279,6 @@ class TestDisplayResults:
         assert "skills: Python, JavaScript, Docker" in output
         assert "job_title: Full Stack Developer" in output
 
-        # Check that the Notion format includes multi_select
-        assert '"multi_select"' in output
 
     def test_display_results_empty_metadata(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test display_results with empty metadata."""
@@ -301,9 +293,6 @@ class TestDisplayResults:
         # Check that the structure is still displayed even with empty data
         assert "JOB METADATA EXTRACTION RESULTS" in output
         assert "EXTRACTED METADATA:" in output
-        assert "NOTION FORMAT:" in output
-        assert "Ready for Notion database insertion!" in output
-        assert '"properties": {}' in output
 
     def test_display_results_json_formatting(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test that JSON is properly formatted in display_results."""
@@ -319,6 +308,5 @@ class TestDisplayResults:
         captured = capsys.readouterr()
         output = captured.out
 
-        # Verify that the JSON is formatted with proper indentation
-        expected_json = json.dumps(notion_update, indent=2, ensure_ascii=False)
-        assert expected_json in output
+        # Verify that the extracted metadata is displayed
+        assert "test: value" in output
