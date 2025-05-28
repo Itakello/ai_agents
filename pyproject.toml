@@ -30,6 +30,8 @@ dependencies = [
     "python-dotenv",
     "openai",
     "notion_client",
+    "crawl4ai",
+    "scrapegraph-py",
 ]
 
 [project.optional-dependencies]
