@@ -28,7 +28,7 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "python-dotenv",
-    "openai",
+    "openai==1.82.0",
     "notion_client",
     "crawl4ai",
 ]
