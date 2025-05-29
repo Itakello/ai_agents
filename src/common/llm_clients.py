@@ -144,7 +144,7 @@ class OpenAIClient:
             )
 
             # Make the API call using proper parameter names
-            response = self.client.responses.create(  # type: ignore[call-overload]
+            response = self.client.responses.create(
                 input=messages,
                 model=model_name,
                 text=text_config,
