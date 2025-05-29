@@ -27,7 +27,7 @@ Examples:
   python src/main.py https://example.com/job-posting
   python src/main.py https://linkedin.com/jobs/view/123456 --model gpt-4o-mini
   python src/main.py https://example.com/job --method crawl4ai_plus_gpt
-  python src/main.py https://example.com/job --method scrapegraphai_direct --model gpt-4o
+  python src/main.py https://example.com/job --method crawl4ai_direct --model gpt-4o
         """,
     )
 
