@@ -12,28 +12,26 @@ Example:
 import argparse
 import asyncio
 import sys
+
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 
 
 async def crawl_url(url: str) -> None:
     """Crawl a URL and print its markdown content.
-    
+
     Args:
         url: The URL to crawl
     """
     browser_config = BrowserConfig()  # Default browser configuration
-    run_config = CrawlerRunConfig()   # Default crawl run configuration
+    run_config = CrawlerRunConfig()  # Default crawl run configuration
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
         print(f"Crawling URL: {url}")
         print("=" * 80)
-        
-        result = await crawler.arun(
-            url=url,
-            config=run_config
-        )
-        
+
+        result = await crawler.arun(url=url, config=run_config)
+
         if result.success:
             print("SUCCESS: Crawling completed")
             print("=" * 80)
@@ -55,13 +53,13 @@ def main() -> None:
 Examples:
   python test_crawl4ai.py https://example.com
   python test_crawl4ai.py https://linkedin.com/jobs/view/123456
-        """
+        """,
     )
-    
+
     parser.add_argument("url", help="URL to crawl and extract markdown from")
-    
+
     args = parser.parse_args()
-    
+
     try:
         asyncio.run(crawl_url(args.url))
     except KeyboardInterrupt:
