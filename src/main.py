@@ -40,8 +40,8 @@ Examples:
     parser.add_argument(
         "--method",
         choices=[method.value for method in ExtractionMethod],
-        default=ExtractionMethod.OPENAI_WEB_SEARCH.value,
-        help=f"Extraction method to use (default: {ExtractionMethod.OPENAI_WEB_SEARCH.value})",
+        default=ExtractionMethod.CRAWL4AI_PLUS_GPT.value,
+        help=f"Extraction method to use (default: {ExtractionMethod.CRAWL4AI_PLUS_GPT.value})",
     )
 
     return parser.parse_args()
