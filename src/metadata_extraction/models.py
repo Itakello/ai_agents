@@ -139,7 +139,10 @@ def create_openai_schema_from_notion_database(
     for prop_name, prop_config in notion_properties.items():
         # Skip read-only properties
         prop_type = prop_config.get("type")
+        prop_desc = prop_config.get("description", "")
         if prop_type in ["created_time", "created_by", "last_edited_time", "last_edited_by", "formula", "rollup"]:
+            continue
+        if "#exclude" in prop_desc:
             continue
 
         schema["properties"][prop_name] = notion_property_to_openai_schema(prop_config, add_options=add_options)
