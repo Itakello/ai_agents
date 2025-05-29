@@ -6,12 +6,15 @@ structured metadata from job descriptions using OpenAI's language models and
 Notion database schemas.
 """
 
+import asyncio
 import json
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from crawl4ai import WebScrapingStrategy  # type: ignore[import-untyped]
+from crawl4ai import AsyncWebCrawler  # type: ignore
+from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig  # type: ignore
+from crawl4ai.models import CrawlResult  # type: ignore
 
 from ..common.llm_clients import OpenAIClient
 from ..common.notion_service import NotionService
@@ -24,7 +27,6 @@ class ExtractionMethod(Enum):
 
     OPENAI_WEB_SEARCH = "openai_web_search"
     CRAWL4AI_PLUS_GPT = "crawl4ai_plus_gpt"
-    CRAWL4AI_DIRECT = "crawl4ai_direct"
 
 
 class ExtractorServiceError(Exception):
@@ -136,8 +138,6 @@ class ExtractorService:
                 return self._extract_with_openai_web_search(job_url, notion_database_schema, model_name)
             elif extraction_method == ExtractionMethod.CRAWL4AI_PLUS_GPT:
                 return self._extract_with_crawl4ai_plus_gpt(job_url, notion_database_schema, model_name)
-            elif extraction_method == ExtractionMethod.CRAWL4AI_DIRECT:
-                return self._extract_with_crawl4ai_direct(job_url, notion_database_schema, model_name)
             else:
                 raise ExtractorServiceError(f"Unsupported extraction method: {extraction_method}")
 
@@ -247,13 +247,23 @@ Return only the JSON object, no additional text or formatting."""
     ) -> dict[str, Any]:
         """Extract metadata using Crawl4AI for crawling + GPT for extraction."""
 
-        # Crawl the URL to get markdown content
-        with WebScrapingStrategy() as crawler:
-            result = crawler.run(url=job_url)
-            if not result.success:
-                raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
+        # Crawl the URL to get markdown content using async crawler
+        async def crawl_url_async(url: str) -> str:
+            browser_config = BrowserConfig()  # Default browser configuration
+            run_config = CrawlerRunConfig()  # Default crawl run configuration
 
-            markdown_content = result.markdown
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                result = await crawler.arun(url=url, config=run_config)
+                if not isinstance(result, CrawlResult):
+                    raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
+                # Handle the result properly by accessing its attributes with type: ignore
+                if not result.success:
+                    raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
+
+                return str(result.markdown)
+
+        # Run the async crawler
+        markdown_content = asyncio.run(crawl_url_async(job_url))
 
         # Convert Notion schema to OpenAI JSON Schema format
         openai_schema = create_openai_schema_from_notion_database(notion_database_schema)
@@ -271,45 +281,6 @@ Return only the JSON object, no additional text or formatting."""
             schema=openai_schema,
             use_web_search=False,
         )
-
-    def _extract_with_crawl4ai_direct(
-        self, job_url: str, notion_database_schema: dict[str, Any], model_name: str
-    ) -> dict[str, Any]:
-        """Extract metadata using Crawl4AI's direct extraction capabilities."""
-        try:
-            from crawl4ai import WebCrawler  # type: ignore[import-untyped]
-        except ImportError:
-            WebCrawler = None
-
-        if WebCrawler is None:
-            raise ExtractorServiceError("Crawl4AI is not installed. Please install it with: pip install crawl4ai")
-
-        # Convert Notion schema to OpenAI JSON Schema format for extraction schema
-        openai_schema = create_openai_schema_from_notion_database(notion_database_schema)
-
-        # Create extraction schema for Crawl4AI
-        extraction_schema = {
-            "type": "object",
-            "properties": openai_schema["properties"],
-            "required": openai_schema.get("required", []),
-        }
-
-        # Use Crawl4AI with LLM extraction
-        with WebCrawler() as crawler:
-            result = crawler.run(
-                url=job_url,
-                extraction_strategy="llm",
-                extraction_schema=extraction_schema,
-                llm_provider="openai",
-                llm_model=model_name,
-            )
-
-            if not result.success:
-                raise ExtractorServiceError(f"Failed to extract data with Crawl4AI: {result.error_message}")
-
-            return dict(result.extracted_content) if result.extracted_content else {}
-
-
 
     def _build_field_descriptions(self, schema: dict[str, Any]) -> list[str]:
         """Build field descriptions from Notion schema."""
