@@ -7,7 +7,7 @@ as well as converting data between the two formats.
 from typing import Any
 
 
-def notion_property_to_openai_schema(notion_property: dict[str, Any]) -> dict[str, Any]:
+def notion_property_to_openai_schema(notion_property: dict[str, Any], add_options: bool) -> dict[str, Any]:
     """Convert a Notion property definition to OpenAI JSON Schema format.
 
     Args:
@@ -29,19 +29,19 @@ def notion_property_to_openai_schema(notion_property: dict[str, Any]) -> dict[st
             property = {"type": "boolean"}
         case "select":
             options = notion_property.get("select", {}).get("options", [])
-            if options:
+            if options and add_options:
                 property = {"type": "string", "enum": [option["name"] for option in options]}
             else:
                 property = {"type": "string"}
         case "status":
             options = notion_property.get("status", {}).get("options", [])
-            if options:
+            if options and add_options:
                 property = {"type": "string", "enum": [option["name"] for option in options]}
             else:
                 property = {"type": "string"}
         case "multi_select":
             options = notion_property.get("multi_select", {}).get("options", [])
-            if options:
+            if options and add_options:
                 property = {
                     "type": "array",
                     "items": {"type": "string", "enum": [option["name"] for option in options]},
@@ -123,7 +123,9 @@ def openai_data_to_notion_property(value: Any, property_type: str) -> dict[str, 
             return {"rich_text": [{"text": {"content": str(value)}}]}
 
 
-def create_openai_schema_from_notion_database(notion_properties: dict[str, Any]) -> dict[str, Any]:
+def create_openai_schema_from_notion_database(
+    notion_properties: dict[str, Any], add_options: bool = True
+) -> dict[str, Any]:
     """Create a complete OpenAI JSON Schema from Notion database properties.
 
     Args:
@@ -140,7 +142,7 @@ def create_openai_schema_from_notion_database(notion_properties: dict[str, Any])
         if prop_type in ["created_time", "created_by", "last_edited_time", "last_edited_by", "formula", "rollup"]:
             continue
 
-        schema["properties"][prop_name] = notion_property_to_openai_schema(prop_config)
+        schema["properties"][prop_name] = notion_property_to_openai_schema(prop_config, add_options=add_options)
         schema["required"].append(prop_name)
 
     return schema
