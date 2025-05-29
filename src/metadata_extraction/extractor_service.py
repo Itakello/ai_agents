@@ -14,7 +14,7 @@ from typing import Any
 
 from crawl4ai import AsyncWebCrawler  # type: ignore
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig  # type: ignore
-from crawl4ai.models import CrawlResult  # type: ignore
+from crawl4ai.models import CrawlResultContainer  # type: ignore
 
 from ..common.llm_clients import OpenAIClient
 from ..common.notion_service import NotionService
@@ -51,59 +51,6 @@ class ExtractorService:
         """
         self.openai_client = openai_client
         self.notion_service = notion_service
-
-    def extract_metadata_from_job_description(
-        self, job_description: str, notion_database_schema: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Extract structured metadata from a job description text.
-
-        Uses OpenAI's language models to extract relevant information from a job description
-        and structure it according to the provided Notion database schema.
-
-        Args:
-            job_description: The job description text to analyze.
-            notion_database_schema: The Notion database properties schema for structuring the output.
-
-        Returns:
-            A dictionary containing the extracted metadata structured according to the schema.
-
-        Raises:
-            ExtractorServiceError: If there's an error during the extraction process.
-        """
-        if not job_description.strip():
-            raise ExtractorServiceError("Job description text cannot be empty")
-
-        if not notion_database_schema:
-            raise ExtractorServiceError("Notion database schema cannot be empty")
-
-        try:
-            # Convert Notion schema to OpenAI JSON Schema format
-            openai_schema = create_openai_schema_from_notion_database(notion_database_schema)
-
-            # Build the extraction prompt
-            prompt = self._build_extraction_prompt(job_description, notion_database_schema, openai_schema)
-
-            # Get completion from OpenAI
-            response = self.openai_client.get_response(
-                sys_prompt=None, user_prompt=prompt, model_name="gpt-4-1106-preview"
-            )
-
-            # Parse the JSON response
-            try:
-                extracted_data = json.loads(response)
-            except json.JSONDecodeError as e:
-                raise ExtractorServiceError(f"Failed to parse LLM response as JSON: {str(e)}") from e
-
-            # Validate that response is a dictionary
-            if not isinstance(extracted_data, dict):
-                raise ExtractorServiceError("LLM response is not a valid JSON object")
-
-            return extracted_data
-
-        except Exception as e:
-            if isinstance(e, ExtractorServiceError):
-                raise
-            raise ExtractorServiceError(f"Error during metadata extraction: {str(e)}") from e
 
     def extract_metadata_from_job_url(
         self,
@@ -254,7 +201,7 @@ Return only the JSON object, no additional text or formatting."""
 
             async with AsyncWebCrawler(config=browser_config) as crawler:
                 result = await crawler.arun(url=url, config=run_config)
-                if not isinstance(result, CrawlResult):
+                if not isinstance(result, CrawlResultContainer):
                     raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
                 # Handle the result properly by accessing its attributes with type: ignore
                 if not result.success:
