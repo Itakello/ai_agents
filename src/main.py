@@ -47,6 +47,33 @@ Examples:
     return parser.parse_args()
 
 
+def display_results(
+    extracted_metadata: dict[str, Any], notion_update: dict[str, Any], extraction_method: ExtractionMethod
+) -> None:
+    """Display the extracted metadata and Notion-formatted results in the CLI.
+
+    Args:
+        extracted_metadata: The raw extracted metadata from the extraction service
+        notion_update: The converted metadata in Notion format
+        extraction_method: The extraction method that was used
+    """
+    print("\n" + "=" * 80)
+    print("JOB METADATA EXTRACTION RESULTS")
+    print("=" * 80)
+
+    print(f"\n🔧 EXTRACTION METHOD: {extraction_method.value}")
+    print("-" * 40)
+
+    print("\n📊 EXTRACTED METADATA:")
+    print("-" * 40)
+    for key, value in extracted_metadata.items():
+        if isinstance(value, list):
+            value_str = ", ".join(str(v) for v in value)
+        else:
+            value_str = str(value)
+        print(f"{key}: {value_str}")
+
+
 def main() -> None:
     """Main function for the Job Finder Assistant application."""
     try:
@@ -109,33 +136,6 @@ def main() -> None:
     except Exception as e:
         logger.exception(f"An error occurred during execution: {str(e)}")
         sys.exit(1)
-
-
-def display_results(
-    extracted_metadata: dict[str, Any], notion_update: dict[str, Any], extraction_method: ExtractionMethod
-) -> None:
-    """Display the extracted metadata and Notion-formatted results in the CLI.
-
-    Args:
-        extracted_metadata: The raw extracted metadata from the extraction service
-        notion_update: The converted metadata in Notion format
-        extraction_method: The extraction method that was used
-    """
-    print("\n" + "=" * 80)
-    print("JOB METADATA EXTRACTION RESULTS")
-    print("=" * 80)
-
-    print(f"\n🔧 EXTRACTION METHOD: {extraction_method.value}")
-    print("-" * 40)
-
-    print("\n📊 EXTRACTED METADATA:")
-    print("-" * 40)
-    for key, value in extracted_metadata.items():
-        if isinstance(value, list):
-            value_str = ", ".join(str(v) for v in value)
-        else:
-            value_str = str(value)
-        print(f"{key}: {value_str}")
 
 
 if __name__ == "__main__":
