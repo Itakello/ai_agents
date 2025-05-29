@@ -302,3 +302,81 @@ class TestNotionService:
         with pytest.raises(NotionAPIError) as exc_info:
             service.update_page_properties(page_id, properties_update)
         assert f"Failed to update properties on page {page_id}:" in str(exc_info.value)
+
+    def test_find_url_property_name_auto_detection(self, mock_client: MagicMock) -> None:
+        """Test auto-detection of URL property name."""
+        # Arrange
+        api_key = "test_api_key"
+        database_id = "test_database_id"
+        service = NotionService(api_key=api_key, database_id=database_id)
+
+        # Test with schema that has "Company Website" as URL property
+        schema_with_company_website = {
+            "Job Title": {"id": "title", "type": "title"},
+            "Company Website": {"id": "url", "type": "url"},
+            "Status": {"id": "stat", "type": "select"},
+        }
+
+        # Act
+        result = service._find_url_property_name(schema_with_company_website)
+
+        # Assert
+        assert result == "Company Website"
+
+    def test_find_url_property_name_no_url_property(self, mock_client: MagicMock) -> None:
+        """Test when no URL property exists in schema."""
+        # Arrange
+        api_key = "test_api_key"
+        database_id = "test_database_id"
+        service = NotionService(api_key=api_key, database_id=database_id)
+
+        # Test with schema that has no URL properties
+        schema_without_url = {
+            "Job Title": {"id": "title", "type": "title"},
+            "Company": {"id": "comp", "type": "rich_text"},
+            "Status": {"id": "stat", "type": "select"},
+        }
+
+        # Act
+        result = service._find_url_property_name(schema_without_url)
+
+        # Assert
+        assert result is None
+
+    def test_save_or_update_extracted_data_auto_detects_url_property(self, mock_client: MagicMock) -> None:
+        """Test that save_or_update_extracted_data auto-detects URL property name."""
+        # Arrange
+        api_key = "test_api_key"
+        database_id = "test_database_id"
+        service = NotionService(api_key=api_key, database_id=database_id)
+        mock_instance = mock_client.return_value
+
+        # Mock database schema with "Company Website" as URL property
+        mock_instance.databases.retrieve.return_value = {
+            "object": "database",
+            "id": database_id,
+            "properties": {
+                "Job Title": {"id": "title", "type": "title"},
+                "Company Website": {"id": "url", "type": "url"},
+                "Status": {"id": "stat", "type": "select"},
+            },
+        }
+
+        # Mock query to return no existing pages
+        mock_instance.databases.query.return_value = {"results": []}
+
+        # Mock page creation
+        mock_instance.pages.create.return_value = {"id": "new_page_id"}
+
+        url = "https://example.com/job"
+        extracted_data = {"Job Title": "Software Engineer"}
+
+        # Act
+        result = service.save_or_update_extracted_data(url, extracted_data)
+
+        # Assert
+        # Verify that query was called with the correct URL property name
+        mock_instance.databases.query.assert_called_once()
+        query_args = mock_instance.databases.query.call_args
+        assert query_args[1]["filter"]["property"] == "Company Website"
+        assert result == {"id": "new_page_id"}

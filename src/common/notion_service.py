@@ -124,12 +124,12 @@ class NotionService:
         except Exception as e:
             raise NotionAPIError(f"Failed to update properties on page {page_id}: {str(e)}") from e
 
-    def find_page_by_url(self, url: str, url_property_name: str = "URL") -> dict[str, Any] | None:
+    def find_page_by_url(self, url: str, url_property_name: str | None = None) -> dict[str, Any] | None:
         """Find a page in the database by URL.
 
         Args:
             url: The URL to search for.
-            url_property_name: The name of the URL property in the database (defaults to "URL").
+            url_property_name: The name of the URL property in the database. If None, will auto-detect from schema.
 
         Returns:
             The page data if found, None otherwise.
@@ -138,6 +138,15 @@ class NotionService:
             NotionAPIError: If there's an error querying the database.
         """
         try:
+            # Auto-detect URL property name if not provided
+            if url_property_name is None:
+                database_schema = self.get_database_schema()
+                url_property_name = self._find_url_property_name(database_schema)
+                if url_property_name is None:
+                    raise NotionAPIError(
+                        "No URL property found in database schema. Cannot search for existing pages by URL."
+                    )
+
             result = self.client.databases.query(
                 database_id=self.database_id,
                 filter={"property": url_property_name, "url": {"equals": url}},
@@ -170,14 +179,14 @@ class NotionService:
             raise NotionAPIError(f"Failed to create page: {str(e)}") from e
 
     def save_or_update_extracted_data(
-        self, url: str, extracted_data: dict[str, Any], url_property_name: str = "URL"
+        self, url: str, extracted_data: dict[str, Any], url_property_name: str | None = None
     ) -> dict[str, Any]:
         """Save extracted data to Notion database, updating existing page if URL already exists.
 
         Args:
             url: The URL that was processed.
             extracted_data: The structured data extracted from the URL.
-            url_property_name: The name of the URL property in the database (defaults to "URL").
+            url_property_name: The name of the URL property in the database. If None, will auto-detect from schema.
 
         Returns:
             The page data (either updated or newly created).
@@ -186,11 +195,19 @@ class NotionService:
             NotionAPIError: If there's an error saving or updating the data.
         """
         try:
-            # Check if page with this URL already exists
-            existing_page = self.find_page_by_url(url, url_property_name)
-
             # Get database schema to understand property types
             database_schema = self.get_database_schema()
+
+            # Auto-detect URL property name if not provided
+            if url_property_name is None:
+                url_property_name = self._find_url_property_name(database_schema)
+                if url_property_name is None:
+                    raise NotionAPIError(
+                        "No URL property found in database schema. Please ensure your Notion database has a URL property or specify the property name explicitly."
+                    )
+
+            # Check if page with this URL already exists
+            existing_page = self.find_page_by_url(url, url_property_name)
 
             # Prepare properties for Notion API format
             properties = self._format_properties_for_notion(extracted_data, url, url_property_name, database_schema)
@@ -277,3 +294,43 @@ class NotionService:
                 properties[key] = {"rich_text": [{"text": {"content": str(value)}}]}
 
         return properties
+
+    def _find_url_property_name(self, database_schema: dict[str, Any]) -> str | None:
+        """Find the URL property name in the database schema.
+
+        Args:
+            database_schema: The database schema from Notion.
+
+        Returns:
+            The name of the URL property if found, None otherwise.
+        """
+        # First, look for properties with type 'url'
+        for property_name, property_config in database_schema.items():
+            if property_config.get("type") == "url":
+                return property_name
+
+        # If no URL type found, look for common URL property names
+        common_url_names = [
+            "URL",
+            "url",
+            "Job URL",
+            "Job url",
+            "Link",
+            "Job Link",
+            "Posting URL",
+            "Application URL",
+            "Source",
+        ]
+
+        for property_name in database_schema.keys():
+            for common_name in common_url_names:
+                if property_name.lower() == common_name.lower():
+                    return property_name
+
+        # If still not found, check for properties containing 'url' or 'link' in the name
+        for property_name in database_schema.keys():
+            property_name_lower = property_name.lower()
+            if "url" in property_name_lower or "link" in property_name_lower or "website" in property_name_lower:
+                return property_name
+
+        return None
