@@ -48,6 +48,20 @@ class Settings(BaseSettings):
     DEFAULT_OUTPUT_DIR: Path = Path("output")
     TEST_NOTION_PAGE_ID: str | None = None
 
+    # OpenAI API settings
+    OPENAI_TEMPERATURE: float = 0.7
+    OPENAI_MAX_RETRIES: int = 3
+    OPENAI_TIMEOUT_SECONDS: int = 30
+
+    # Default CLI settings
+    DEFAULT_EXTRACTION_METHOD: str = "crawl4ai_plus_gpt"
+    DEFAULT_EXPORT_PDF_DIR: str = "exported_pdfs"
+
+    # Crawl4AI settings
+    CRAWL4AI_HEADLESS: bool = True
+    CRAWL4AI_TIMEOUT_SECONDS: int = 30
+    CRAWL4AI_USER_AGENT: str = "Job-Finder-Assistant/1.0"
+
     @field_validator("OPENAI_API_KEY", "NOTION_API_KEY")
     @classmethod
     def validate_api_keys(cls, v: str) -> str:
@@ -75,6 +89,23 @@ class Settings(BaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"Log level must be one of: {', '.join(valid_levels)}")
         return v.upper()
+
+    @field_validator("OPENAI_TEMPERATURE")
+    @classmethod
+    def validate_temperature(cls, v: float) -> float:
+        """Validate temperature is between 0 and 2."""
+        if not 0 <= v <= 2:
+            raise ValueError("Temperature must be between 0 and 2")
+        return v
+
+    @field_validator("DEFAULT_EXTRACTION_METHOD")
+    @classmethod
+    def validate_extraction_method(cls, v: str) -> str:
+        """Validate extraction method is supported."""
+        valid_methods = {"openai_web_search", "crawl4ai_plus_gpt"}
+        if v not in valid_methods:
+            raise ValueError(f"Extraction method must be one of: {', '.join(valid_methods)}")
+        return v
 
 
 # Global settings instance - using a function to ensure it's only created once

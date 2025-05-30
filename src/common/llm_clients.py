@@ -16,6 +16,8 @@ from openai.types.responses import (
     WebSearchToolParam,
 )
 
+from src.core.config import settings
+
 
 class OpenAIClient:
     """Client for interacting with OpenAI's Responses API.
@@ -72,7 +74,7 @@ class OpenAIClient:
             response = self.client.responses.create(
                 input=messages,
                 model=model_name,
-                temperature=0.7,
+                temperature=settings.OPENAI_TEMPERATURE,
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
             )
 
@@ -148,7 +150,7 @@ class OpenAIClient:
                 input=messages,
                 model=model_name,
                 text=text_config,
-                temperature=0.5,
+                temperature=settings.OPENAI_TEMPERATURE,
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
                 tools=tools,
             )
