@@ -61,13 +61,47 @@ class Settings(BaseSettings):
     CRAWL4AI_HEADLESS: bool = True
     CRAWL4AI_TIMEOUT_SECONDS: int = 30
     CRAWL4AI_USER_AGENT: str = "Job-Finder-Assistant/1.0"
+    CRAWL4AI_MAX_RETRIES: int = 3
+    CRAWL4AI_RETRY_DELAY_SECONDS: int = 2
+    MAX_CONTENT_LENGTH_CHARS: int = 500000
+
+    # Cache settings
+    CACHE_ENABLED: bool = True
+    CACHE_TTL_HOURS: int = 24
+    CACHE_MAX_ENTRIES: int = 1000
+    CACHE_DIRECTORY: Path = Path(".cache")
+
+    # PDF Export settings
+    PDF_MAIN_FONT: str = "FiraCode Nerd Font"
+    PDF_SANS_FONT: str = "FiraCode Nerd Font"
+    PDF_MONO_FONT: str = "FiraCode Nerd Font Mono"
+    PDF_MARGIN: str = "1in"
+    PDF_FONT_SIZE: str = "11pt"
+    PDF_LINE_STRETCH: str = "1.2"
+    PDF_ENGINE_PRIMARY: str = "xelatex"
+    PDF_ENGINE_FALLBACK: str = "lualatex"
+
+    # File paths and directories
+    PROMPTS_DIRECTORY: Path = Path("prompts")
+    METADATA_EXTRACTION_PROMPT_FILE: str = "sys_prompt_extract_metadata.txt"
+    CRAWL4AI_PROMPT_FILE: str = "crawl4ai_plus_gpt_prompt.txt"
+    TEMP_DIRECTORY: Path = Path("tmp")
+
+    # Performance and reliability settings
+    API_KEY_MIN_LENGTH: int = 10
+    MAX_API_RETRIES_ON_FAILURE: int = 3
+    API_RETRY_DELAY_SECONDS: float = 1.0
+    REQUEST_BACKOFF_MULTIPLIER: float = 2.0
+    MAX_OUTPUT_FILES_TO_KEEP: int = 100
 
     @field_validator("OPENAI_API_KEY", "NOTION_API_KEY")
     @classmethod
     def validate_api_keys(cls, v: str) -> str:
         """Validate API keys are non-empty and have reasonable length."""
-        if not v or len(v.strip()) < 10:
-            raise ValueError("API key must be at least 10 characters long")
+        # Use the default value since we can't access other field values in field validators
+        min_length = 10  # We'll use the API_KEY_MIN_LENGTH default
+        if not v or len(v.strip()) < min_length:
+            raise ValueError(f"API key must be at least {min_length} characters long")
         return v.strip()
 
     @field_validator("MASTER_RESUME_PATH")

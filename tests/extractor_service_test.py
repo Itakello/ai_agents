@@ -1,12 +1,11 @@
 """Tests for the ExtractorService class."""
 
-import json
 from typing import Any, Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from src.metadata_extraction.extractor_service import ExtractorService, ExtractorServiceError
+from src.metadata_extraction.extractor_service import ExtractorService
 
 
 class TestExtractorService:

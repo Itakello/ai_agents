@@ -9,7 +9,6 @@ Notion database schemas.
 import asyncio
 import json
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler  # type: ignore
@@ -19,6 +18,7 @@ from crawl4ai.models import CrawlResultContainer  # type: ignore
 from ..common.llm_clients import OpenAIClient
 from ..common.notion_service import NotionService
 from ..common.utils import read_file_content
+from ..core.config import get_settings
 from .cache import URLCache
 from .models import create_openai_schema_from_notion_database
 
@@ -182,8 +182,9 @@ Return only the JSON object, no additional text or formatting."""
         # Convert Notion schema to OpenAI JSON Schema format
         openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
 
-        # Load the prompt from file
-        prompt_path = Path(__file__).parent.parent.parent / "prompts" / "sys_prompt_extract_metadata.txt"
+        # Load the prompt from file using configured paths
+        settings = get_settings()
+        prompt_path = settings.PROMPTS_DIRECTORY / settings.METADATA_EXTRACTION_PROMPT_FILE
         sys_prompt_template = read_file_content(prompt_path)
         sys_prompt = sys_prompt_template.replace("{{URL}}", job_url)
 
@@ -207,6 +208,7 @@ Return only the JSON object, no additional text or formatting."""
         else:
             # Crawl the URL to get markdown content using async crawler
             async def crawl_url_async(url: str) -> str:
+                settings = get_settings()
                 browser_config = BrowserConfig()  # Default browser configuration
                 run_config = CrawlerRunConfig()  # Default crawl run configuration
 
@@ -229,8 +231,9 @@ Return only the JSON object, no additional text or formatting."""
         # Convert Notion schema to OpenAI JSON Schema format
         openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
 
-        # Load and build prompt from template
-        prompt_path = Path(__file__).parent.parent.parent / "prompts" / "crawl4ai_plus_gpt_prompt.txt"
+        # Load and build prompt from template using configured paths
+        settings = get_settings()
+        prompt_path = settings.PROMPTS_DIRECTORY / settings.CRAWL4AI_PROMPT_FILE
         prompt_template = read_file_content(prompt_path)
         prompt = prompt_template.replace("{{CONTENT}}", markdown_content)
 
