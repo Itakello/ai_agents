@@ -19,6 +19,7 @@ from crawl4ai.models import CrawlResultContainer  # type: ignore
 from ..common.llm_clients import OpenAIClient
 from ..common.notion_service import NotionService
 from ..common.utils import read_file_content
+from .cache import URLCache
 from .models import create_openai_schema_from_notion_database
 
 
@@ -50,10 +51,12 @@ class ExtractorService:
         Args:
             openai_client: An initialized OpenAI client for LLM interactions.
             notion_service: An initialized Notion service for database operations.
+            add_properties_options: Whether to add options to select/multi_select properties.
         """
         self.openai_client = openai_client
         self.notion_service = notion_service
         self.add_properties_options = add_properties_options
+        self.url_cache = URLCache()
 
     def extract_metadata_from_job_url(
         self,
@@ -197,23 +200,31 @@ Return only the JSON object, no additional text or formatting."""
     ) -> dict[str, Any]:
         """Extract metadata using Crawl4AI for crawling + GPT for extraction."""
 
-        # Crawl the URL to get markdown content using async crawler
-        async def crawl_url_async(url: str) -> str:
-            browser_config = BrowserConfig()  # Default browser configuration
-            run_config = CrawlerRunConfig()  # Default crawl run configuration
+        # Check cache first
+        cached_content = self.url_cache.get_cached_content(job_url)
+        if cached_content:
+            markdown_content = cached_content
+        else:
+            # Crawl the URL to get markdown content using async crawler
+            async def crawl_url_async(url: str) -> str:
+                browser_config = BrowserConfig()  # Default browser configuration
+                run_config = CrawlerRunConfig()  # Default crawl run configuration
 
-            async with AsyncWebCrawler(config=browser_config) as crawler:
-                result = await crawler.arun(url=url, config=run_config)
-                if not isinstance(result, CrawlResultContainer):
-                    raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
-                # Handle the result properly by accessing its attributes with type: ignore
-                if not result.success:
-                    raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
+                async with AsyncWebCrawler(config=browser_config) as crawler:
+                    result = await crawler.arun(url=url, config=run_config)
+                    if not isinstance(result, CrawlResultContainer):
+                        raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
+                    # Handle the result properly by accessing its attributes with type: ignore
+                    if not result.success:
+                        raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
 
-                return str(result.markdown)
+                    return str(result.markdown)
 
-        # Run the async crawler
-        markdown_content = asyncio.run(crawl_url_async(job_url))
+            # Run the async crawler
+            markdown_content = asyncio.run(crawl_url_async(job_url))
+
+            # Cache the crawled content
+            self.url_cache.cache_content(job_url, markdown_content)
 
         # Convert Notion schema to OpenAI JSON Schema format
         openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
