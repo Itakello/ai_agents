@@ -4,6 +4,7 @@ This module provides functions to convert between Notion property schemas and Op
 as well as converting data between the two formats.
 """
 
+import random
 from typing import Any
 
 
@@ -123,9 +124,7 @@ def openai_data_to_notion_property(value: Any, property_type: str) -> dict[str, 
             return {"rich_text": [{"text": {"content": str(value)}}]}
 
 
-def create_openai_schema_from_notion_database(
-    notion_properties: dict[str, Any], add_options: bool = True
-) -> dict[str, Any]:
+def create_openai_schema_from_notion_database(notion_properties: dict[str, Any], add_options: bool) -> dict[str, Any]:
     """Create a complete OpenAI JSON Schema from Notion database properties.
 
     Args:
@@ -144,6 +143,14 @@ def create_openai_schema_from_notion_database(
             continue
         if "#exclude" in prop_desc:
             continue
+        if not add_options and prop_type in ["select", "multi_select", "status"]:
+            sampled_examples = random.sample(
+                prop_config.get(prop_type, {}).get("options", []),
+                min(3, len(prop_config.get(prop_type, {}).get("options", []))),
+            )
+            prop_config["description"] = "e.g. " + ", ".join([option["name"] for option in sampled_examples]) + ", ..."
+            if prop_desc:
+                prop_config["description"] = prop_desc + "|" + prop_config["description"]
 
         schema["properties"][prop_name] = notion_property_to_openai_schema(prop_config, add_options=add_options)
         schema["required"].append(prop_name)
