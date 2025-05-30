@@ -13,22 +13,22 @@ class TestNotionPropertyToOpenAISchema:
 
     def test_rich_text_property(self) -> None:
         notion_prop = {"type": "rich_text"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string"}
 
     def test_title_property(self) -> None:
         notion_prop = {"type": "title"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string"}
 
     def test_number_property(self) -> None:
         notion_prop = {"type": "number"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "number"}
 
     def test_checkbox_property(self) -> None:
         notion_prop = {"type": "checkbox"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "boolean"}
 
     def test_select_property_with_options(self) -> None:
@@ -41,12 +41,12 @@ class TestNotionPropertyToOpenAISchema:
                 ]
             },
         }
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=True)
         assert result == {"type": "string", "enum": ["Junior", "Senior"]}
 
     def test_select_property_without_options(self) -> None:
         notion_prop = {"type": "select", "select": {}}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string"}
 
     def test_status_property_with_options(self) -> None:
@@ -60,12 +60,12 @@ class TestNotionPropertyToOpenAISchema:
                 ]
             },
         }
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=True)
         assert result == {"type": "string", "enum": ["Not started", "In progress", "Done"]}
 
     def test_status_property_without_options(self) -> None:
         notion_prop = {"type": "status", "status": {}}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string"}
 
     def test_multi_select_property_with_options(self) -> None:
@@ -78,47 +78,47 @@ class TestNotionPropertyToOpenAISchema:
                 ]
             },
         }
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "array", "items": {"type": "string", "enum": ["Python", "JavaScript"]}}
 
     def test_multi_select_property_without_options(self) -> None:
         notion_prop = {"type": "multi_select", "multi_select": {}}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "array", "items": {"type": "string"}}
 
     def test_date_property(self) -> None:
         notion_prop = {"type": "date"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string", "format": "date"}
 
     def test_email_property(self) -> None:
         notion_prop = {"type": "email"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string", "format": "email"}
 
     def test_phone_number_property(self) -> None:
         notion_prop = {"type": "phone_number"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string"}
 
     def test_url_property(self) -> None:
         notion_prop = {"type": "url"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string", "pattern": r"^(https?)://[^\s/$.?#].[^\s]*$"}
 
     def test_people_property(self) -> None:
         notion_prop = {"type": "people"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "array", "items": {"type": "string"}}
 
     def test_files_property(self) -> None:
         notion_prop = {"type": "files"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "array", "items": {"type": "string", "format": "uri"}}
 
     def test_unknown_property_type(self) -> None:
         notion_prop = {"type": "unknown_type"}
-        result = notion_property_to_openai_schema(notion_prop)
+        result = notion_property_to_openai_schema(notion_prop, add_options=False)
         assert result == {"type": "string"}
 
 
@@ -232,7 +232,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "salary": {"type": "number"},
             "is_remote": {"type": "checkbox"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
 
         expected = {
             "type": "object",
@@ -257,7 +257,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "formula_field": {"type": "formula"},
             "rollup_field": {"type": "rollup"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
 
         # Only job_title should be included
         expected = {
@@ -281,7 +281,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
 
         expected = {
             "type": "object",

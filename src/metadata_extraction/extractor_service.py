@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler  # type: ignore
-from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig  # type: ignore
+from crawl4ai.async_configs import BrowserConfig, CacheMode, CrawlerRunConfig  # type: ignore
 from crawl4ai.models import CrawlResultContainer  # type: ignore
 
 from ..common.llm_clients import OpenAIClient
@@ -208,9 +208,9 @@ Return only the JSON object, no additional text or formatting."""
         else:
             # Crawl the URL to get markdown content using async crawler
             async def crawl_url_async(url: str) -> str:
-                settings = get_settings()
-                browser_config = BrowserConfig()  # Default browser configuration
-                run_config = CrawlerRunConfig()  # Default crawl run configuration
+                # Create configurations using the helper methods
+                browser_config = self._create_browser_config()
+                run_config = self._create_run_config()
 
                 async with AsyncWebCrawler(config=browser_config) as crawler:
                     result = await crawler.arun(url=url, config=run_config)
@@ -284,3 +284,63 @@ Return only the JSON object, no additional text or formatting."""
             field_descriptions.append(desc)
 
         return field_descriptions
+
+    def _create_browser_config(self, custom_config: dict[str, Any] | None = None) -> BrowserConfig:
+        """Create browser configuration with optional customizations.
+
+        Args:
+            custom_config: Optional dictionary to override default browser settings
+
+        Returns:
+            Configured BrowserConfig instance
+        """
+        settings = get_settings()
+
+        # Default configuration
+        config_params = {
+            "headless": settings.CRAWL4AI_HEADLESS,
+            "user_agent": settings.CRAWL4AI_USER_AGENT,
+            "viewport_width": 1280,
+            "viewport_height": 720,
+            "verbose": True,
+            "text_mode": False,
+            "light_mode": False,
+        }
+
+        # Apply custom overrides if provided
+        if custom_config:
+            config_params.update(custom_config)
+
+        return BrowserConfig(**config_params)
+
+    def _create_run_config(self, custom_config: dict[str, Any] | None = None) -> CrawlerRunConfig:
+        """Create crawler run configuration with optional customizations.
+
+        Args:
+            custom_config: Optional dictionary to override default run settings
+
+        Returns:
+            Configured CrawlerRunConfig instance
+        """
+        settings = get_settings()
+
+        # Default configuration
+        config_params = {
+            "cache_mode": CacheMode.ENABLED,
+            "page_timeout": settings.CRAWL4AI_TIMEOUT_SECONDS * 1000,
+            "delay_before_return_html": 2.0,
+            "remove_overlay_elements": True,
+            "excluded_tags": ["script", "style", "nav", "footer"],
+            "only_text": False,
+            "word_count_threshold": 10,
+            "bypass_cache": False,
+            "screenshot": False,
+        }
+
+        # Apply custom overrides if provided
+        if custom_config:
+            config_params.update(custom_config)
+
+        return CrawlerRunConfig(**config_params)
+        return CrawlerRunConfig(**config_params)
+        return CrawlerRunConfig(**config_params)
