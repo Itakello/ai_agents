@@ -43,6 +43,11 @@ Examples:
         default=ExtractionMethod.CRAWL4AI_PLUS_GPT.value,
         help=f"Extraction method to use (default: {ExtractionMethod.CRAWL4AI_PLUS_GPT.value})",
     )
+    parser.add_argument(
+        "--add-properties-options",
+        default=False,
+        help="Add options to Notion properties where applicable (e.g., select, multi_select)",
+    )
 
     return parser.parse_args()
 
@@ -89,7 +94,11 @@ def main() -> None:
         logger.info("Initializing services...")
         openai_client = OpenAIClient(api_key=settings.OPENAI_API_KEY)
         notion_service = NotionService(api_key=settings.NOTION_API_KEY, database_id=settings.NOTION_DATABASE_ID)
-        extractor_service = ExtractorService(openai_client=openai_client, notion_service=notion_service)
+        extractor_service = ExtractorService(
+            openai_client=openai_client,
+            notion_service=notion_service,
+            add_properties_options=args.add_properties_options,
+        )
 
         # Get job URL and parameters from parsed arguments
         job_url = args.job_url

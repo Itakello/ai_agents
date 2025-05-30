@@ -42,7 +42,9 @@ class ExtractorService:
     extract structured metadata from unstructured job description text.
     """
 
-    def __init__(self, openai_client: OpenAIClient, notion_service: NotionService) -> None:
+    def __init__(
+        self, openai_client: OpenAIClient, notion_service: NotionService, add_properties_options: bool = True
+    ) -> None:
         """Initialize the ExtractorService with required clients.
 
         Args:
@@ -51,6 +53,7 @@ class ExtractorService:
         """
         self.openai_client = openai_client
         self.notion_service = notion_service
+        self.add_properties_options = add_properties_options
 
     def extract_metadata_from_job_url(
         self,
@@ -174,7 +177,7 @@ Return only the JSON object, no additional text or formatting."""
     ) -> dict[str, Any]:
         """Extract metadata using OpenAI's web search capabilities."""
         # Convert Notion schema to OpenAI JSON Schema format
-        openai_schema = create_openai_schema_from_notion_database(notion_database_schema)
+        openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
 
         # Load the prompt from file
         prompt_path = Path(__file__).parent.parent.parent / "prompts" / "sys_prompt_extract_metadata.txt"
@@ -213,7 +216,7 @@ Return only the JSON object, no additional text or formatting."""
         markdown_content = asyncio.run(crawl_url_async(job_url))
 
         # Convert Notion schema to OpenAI JSON Schema format
-        openai_schema = create_openai_schema_from_notion_database(notion_database_schema)
+        openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
 
         # Load and build prompt from template
         prompt_path = Path(__file__).parent.parent.parent / "prompts" / "crawl4ai_plus_gpt_prompt.txt"
