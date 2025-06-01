@@ -99,82 +99,6 @@ class ExtractorService:
                 raise
             raise ExtractorServiceError(f"Error during metadata extraction from URL: {str(e)}") from e
 
-    def _build_extraction_prompt(
-        self, job_description: str, notion_schema: dict[str, Any], openai_schema: dict[str, Any]
-    ) -> str:
-        """Build the prompt for extracting metadata from job description.
-
-        Args:
-            job_description: The job description text.
-            notion_schema: The Notion database schema.
-            openai_schema: The OpenAI JSON schema.
-
-        Returns:
-            The constructed prompt string.
-        """
-        # Filter out read-only properties
-        read_only_types = {"created_time", "last_edited_time", "formula", "rollup"}
-        editable_schema = {
-            name: props for name, props in notion_schema.items() if props.get("type") not in read_only_types
-        }
-
-        # Build field descriptions
-        field_descriptions = []
-        for field_name, field_props in editable_schema.items():
-            field_type = field_props.get("type", "unknown")
-            if field_type == "multi_select" and "multi_select" in field_props:
-                options = [opt["name"] for opt in field_props["multi_select"].get("options", [])]
-                desc = f"{field_name}: array (array of options: {', '.join(options)})"
-            elif field_type == "select" and "select" in field_props:
-                options = [opt["name"] for opt in field_props["select"].get("options", [])]
-                desc = f"{field_name}: string (options: {', '.join(options)})"
-            elif field_type == "status" and "status" in field_props:
-                options = [opt["name"] for opt in field_props["status"].get("options", [])]
-                desc = f"{field_name}: string (options: {', '.join(options)})"
-            elif field_type == "title":
-                desc = f"{field_name}: string"
-            elif field_type == "rich_text":
-                desc = f"{field_name}: string"
-            elif field_type == "number":
-                desc = f"{field_name}: number"
-            elif field_type == "checkbox":
-                desc = f"{field_name}: boolean"
-            elif field_type == "date":
-                desc = f"{field_name}: string (YYYY-MM-DD format)"
-            elif field_type == "email":
-                desc = f"{field_name}: string (email format)"
-            elif field_type == "url":
-                desc = f"{field_name}: string (URL format)"
-            else:
-                desc = f"{field_name}: {field_type}"
-
-            field_descriptions.append(desc)
-
-        prompt = f"""You are an expert at analyzing job descriptions and extracting structured metadata.
-
-Extract relevant information from the following job description and return it as a JSON object that matches the specified schema.
-
-Job Description:
-{job_description}
-
-Available Fields:
-{chr(10).join(field_descriptions)}
-
-Instructions:
-- Only extract information that is clearly present in the job description
-- Return a valid JSON object only
-- Use null for missing information
-- For multi-select fields, return an array of strings
-- For date fields, use YYYY-MM-DD format
-- For salary/number fields, extract numeric values when possible
-
-JSON Schema for validation:
-{json.dumps(openai_schema, indent=2)}
-
-Return only the JSON object, no additional text or formatting."""
-
-        return prompt
-
     def _extract_with_openai_web_search(
         self, job_url: str, notion_database_schema: dict[str, Any], model_name: str
     ) -> dict[str, Any]:
@@ -246,45 +170,6 @@ Return only the JSON object, no additional text or formatting."""
             use_web_search=False,
         )
 
-    def _build_field_descriptions(self, schema: dict[str, Any]) -> list[str]:
-        """Build field descriptions from Notion schema."""
-        # Filter out read-only properties
-        read_only_types = {"created_time", "last_edited_time", "formula", "rollup"}
-        editable_schema = {name: props for name, props in schema.items() if props.get("type") not in read_only_types}
-
-        field_descriptions = []
-        for field_name, field_props in editable_schema.items():
-            field_type = field_props.get("type", "unknown")
-            if field_type == "multi_select" and "multi_select" in field_props:
-                options = [opt["name"] for opt in field_props["multi_select"].get("options", [])]
-                desc = f"{field_name}: array (array of options: {', '.join(options)})"
-            elif field_type == "select" and "select" in field_props:
-                options = [opt["name"] for opt in field_props["select"].get("options", [])]
-                desc = f"{field_name}: string (options: {', '.join(options)})"
-            elif field_type == "status" and "status" in field_props:
-                options = [opt["name"] for opt in field_props["status"].get("options", [])]
-                desc = f"{field_name}: string (options: {', '.join(options)})"
-            elif field_type == "title":
-                desc = f"{field_name}: string"
-            elif field_type == "rich_text":
-                desc = f"{field_name}: string"
-            elif field_type == "number":
-                desc = f"{field_name}: number"
-            elif field_type == "checkbox":
-                desc = f"{field_name}: boolean"
-            elif field_type == "date":
-                desc = f"{field_name}: string (YYYY-MM-DD format)"
-            elif field_type == "email":
-                desc = f"{field_name}: string (email format)"
-            elif field_type == "url":
-                desc = f"{field_name}: string (URL format)"
-            else:
-                desc = f"{field_name}: {field_type}"
-
-            field_descriptions.append(desc)
-
-        return field_descriptions
-
     def _create_browser_config(self, custom_config: dict[str, Any] | None = None) -> BrowserConfig:
         """Create browser configuration with optional customizations.
 
@@ -341,6 +226,4 @@ Return only the JSON object, no additional text or formatting."""
         if custom_config:
             config_params.update(custom_config)
 
-        return CrawlerRunConfig(**config_params)
-        return CrawlerRunConfig(**config_params)
         return CrawlerRunConfig(**config_params)
