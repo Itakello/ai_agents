@@ -28,6 +28,10 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "python-dotenv",
+    "openai==1.82.0",
+    "notion_client",
+    "crawl4ai",
+    "pypandoc",
 ]
 
 [project.optional-dependencies]
@@ -53,7 +57,18 @@ target-version = "py313"
 [tool.ruff.lint]
 # Ignore line length errors (E501)
 ignore = ["E501"]
-select = ["E", "F", "W", "I"] # E=pycodestyle errors, F=pyflakes, W=pycodestyle warnings, I=isort
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "UP",    # pyupgrade - includes typing modernization
+    "FA",    # flake8-future-annotations
+    "TCH",   # flake8-type-checking
+    "UP006", # Use `list` instead of `List` from typing
+    "UP007", # Use `X | Y` for `Union[X, Y]`
+    "UP035", # Import from `typing_extensions` instead of `typing`
+]
 
 # Allow autofix for all enabled rules (when `--fix` is used).
 fixable = ["ALL"]
@@ -113,7 +128,7 @@ addopts = "-ra -q --cov=src --cov-report=term-missing --mypy"
 testpaths = [
     "tests",
 ]
-python_files = "test_*.py"
+python_files = "*_test.py"
 python_classes = "Test*"
 python_functions = "test_*"
 # Filter out warnings that are common but not always actionable

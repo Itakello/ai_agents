@@ -67,3 +67,9 @@ Thumbs.db
 
 # Ruff
 .ruff_cache/
+
+# DB
+*.cache
+
+# Exported files
+exported_pdfs/

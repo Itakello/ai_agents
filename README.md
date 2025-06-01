@@ -1,53 +1,214 @@
-# Python Project Template
+# AI Agents - Job Metadata Extraction System
 
-This repository provides a robust starting point for various Python projects. It includes a common structure, development tools, and best practices to kickstart your development.
+This repository provides a comprehensive AI-powered system for extracting, processing, and managing job-related metadata using advanced language models and Notion integration. Built with modern Python practices, it offers robust tools for automated content analysis and structured data extraction.
 
 ## Features
 
-- Basic project structure.
-- Configuration management using `.env` files.
-- Logging setup.
-- `Dockerfile` for easy containerization and deployment.
-- Linting and formatting with Ruff.
-- Testing with Pytest.
+- **AI-Powered Metadata Extraction**: Advanced job content analysis using OpenAI models
+- **Notion Integration**: Complete Notion API service with database operations and property management
+- **SQLite-based Caching System**: Local file-based caching for crawled web content with PDF export capabilities
+- **Schema Conversion**: Sophisticated Notion-to-OpenAI schema conversion with special directives
+- **Configuration Management**: Environment-based configuration with validation and type safety
+- **Modern Python Typing**: Comprehensive typing setup with pre-commit hooks for code quality
+- **Unit Testing**: Test coverage for core modules with fixtures and mocks
+- **Logging and Monitoring**: Structured logging with configurable levels and output formats
+- **Code Quality**: Pre-commit hooks with Ruff, Black, and MyPy integration
+
+## Metadata Extraction Module
+
+The `src/metadata_extraction/models.py` module provides sophisticated utilities for converting between Notion database properties and OpenAI JSON schemas. This enables seamless integration between Notion databases and AI-powered structured data extraction.
+
+### Key Features
+
+- **Automatic Schema Conversion**: Convert Notion property definitions to OpenAI-compatible JSON schemas
+- **Special Description Directives**: Control schema generation behavior using special commands in property descriptions
+- **Bi-directional Data Conversion**: Convert data from OpenAI responses back to Notion property format
+- **Smart Option Handling**: Intelligent handling of select/multi-select/status properties with example generation
+
+### Property Description Rules
+
+When configuring Notion database properties, you can use special directives in the property descriptions to control how they are handled during schema generation:
+
+#### Available Directives
+
+1. **`#exclude`** - Skip this property entirely in schema generation
+   ```
+   Description: "Internal tracking field #exclude"
+   Result: Property will not appear in the generated OpenAI schema
+   ```
+
+2. **`#keep-options`** - Always include enum options for select/multi-select/status properties
+   ```
+   Description: "Project status #keep-options"
+   Result: Will include enum values even if add_options=False
+   ```
+
+#### Property Type Handling
+
+The module automatically handles various Notion property types:
+
+- **Text Properties**: `rich_text`, `title` → `string`
+- **Numeric Properties**: `number` → `number`
+- **Boolean Properties**: `checkbox` → `boolean`
+- **Selection Properties**: `select`, `multi_select`, `status` → `string` or `array` with optional enum constraints
+- **Date Properties**: `date` → `string` with date format
+- **Contact Properties**: `email`, `phone_number`, `url` → `string` with appropriate formats/patterns
+- **Relation Properties**: `people`, `files` → `array` of strings
+
+#### Read-Only Properties
+
+The following Notion property types are automatically excluded as they are read-only:
+- `created_time`, `created_by`, `last_edited_time`, `last_edited_by`
+- `formula`, `rollup`
+
+#### Example Generation
+
+For select-type properties without enum options, the system automatically generates example descriptions:
+
+```python
+# Property with options but add_options=False
+{
+    "type": "select",
+    "description": "Priority level",
+    "select": {"options": [{"name": "High"}, {"name": "Medium"}, {"name": "Low"}]}
+}
+
+# Generated description: "Priority level | e.g. High, Medium, Low, ..."
+```
+
+### Usage Examples
+
+#### Basic Schema Generation
+
+```python
+from src.metadata_extraction.models import create_openai_schema_from_notion_database
+
+# Notion properties from database
+notion_properties = {
+    "title": {
+        "type": "title",
+        "description": "Task title"
+    },
+    "status": {
+        "type": "select",
+        "description": "Current status #keep-options",
+        "select": {"options": [{"name": "Todo"}, {"name": "In Progress"}, {"name": "Done"}]}
+    },
+    "internal_id": {
+        "type": "rich_text",
+        "description": "Internal tracking #exclude"
+    }
+}
+
+# Generate OpenAI schema
+schema = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+
+# Result:
+{
+    "type": "object",
+    "properties": {
+        "title": {"type": "string", "description": "Task title"},
+        "status": {
+            "type": "string",
+            "description": "Current status #keep-options",
+            "enum": ["Todo", "In Progress", "Done"]
+        }
+        # internal_id is excluded due to #exclude directive
+    },
+    "required": ["title", "status"],
+    "additionalProperties": false
+}
+```
+
+#### Data Conversion
+
+```python
+from src.metadata_extraction.models import convert_openai_response_to_notion_update
+
+# OpenAI response data
+openai_response = {
+    "title": "Complete project documentation",
+    "status": "In Progress"
+}
+
+# Convert to Notion update format
+notion_update = convert_openai_response_to_notion_update(openai_response, notion_properties)
+
+# Result ready for Notion API:
+{
+    "properties": {
+        "title": {"rich_text": [{"text": {"content": "Complete project documentation"}}]},
+        "status": {"select": {"name": "In Progress"}}
+    }
+}
+```
+
+### Testing
+
+The module includes comprehensive tests covering:
+- Individual property type conversions
+- Special directive handling
+- Schema generation edge cases
+- Data conversion accuracy
+- Error handling scenarios
+
+Run the tests with:
+```bash
+pytest tests/metadata_models_test.py -v
+```
 
 ## Project Structure
 
 ```
-python-project-template/
+ai_agents/
 ├── .git/                     # Git repository files
 ├── .github/                  # (Optional) GitHub actions for CI/CD
 ├── .vscode/                  # (Optional) VSCode settings
-├── config/                   # (Optional) Static configuration files if not using .env solely
-├── data/                     # (Optional) For local data storage, ensure it's in .gitignore if sensitive
-├── docs/                     # (Optional) Project documentation
-├── logs/                     # (Optional) For log files, ensure it's in .gitignore
-├── scripts/                  # Utility scripts (e.g., deployment, data migration)
+├── design_docs/              # Architecture documentation and task planning
+├── exported_pdfs/            # Sample PDFs for metadata extraction testing
+├── prompts/                  # AI prompt templates for extraction and crawling
 ├── src/                      # Main source code
-│   ├── core/                 # Core application logic, configuration loading
+│   ├── common/               # Shared utilities and services
 │   │   ├── __init__.py
-│   │   └── config.py         # Loads environment variables
+│   │   ├── llm_clients.py    # OpenAI client integration
+│   │   ├── notion_service.py # Complete Notion API client
+│   │   └── utils.py          # Common utility functions
+│   ├── core/                 # Core application logic and configuration
+│   │   ├── __init__.py
+│   │   ├── config.py         # Environment-based configuration management
+│   │   └── logger.py         # Structured logging setup
+│   ├── metadata_extraction/  # Metadata extraction system
+│   │   ├── __init__.py
+│   │   ├── cache.py          # SQLite-based caching with PDF export
+│   │   ├── extractor_service.py # Main extraction service with retry logic
+│   │   └── models.py         # Schema conversion and data models
 │   ├── __init__.py
 │   └── main.py               # Main application entry point
 ├── tests/                    # Unit and integration tests
-│   └── __init__.py
+│   ├── __init__.py
+│   ├── config_test.py        # Configuration tests
+│   ├── extractor_service_test.py # Extractor service tests
+│   ├── llm_clients_test.py   # LLM client tests
+│   ├── main_test.py          # Main module tests
+│   ├── metadata_models_test.py # Metadata models tests
+│   ├── notion_service_test.py # Notion service tests
+│   └── utils_test.py         # Utility function tests
 ├── .env.example              # Example environment variables
 ├── .gitignore                # Specifies intentionally untracked files that Git should ignore
 ├── CHANGELOG.md              # Log of changes to the project
-├── Dockerfile                # For building Docker container
+├── Dockerfile                # For building Docker container (placeholder)
 ├── LICENSE                   # Project license
 ├── README.md                 # This file
-├── requirements-dev.txt      # Development dependencies (testing, linting)
-├── requirements.txt          # Project dependencies
-└── pyproject.toml            # Python project configuration (for Ruff, pytest, etc.)
+├── pyproject.toml            # Python project configuration (dependencies, tools, etc.)
+└── TYPING_SETUP.md           # Modern Python typing setup guide
 ```
 
 ## Setup and Installation
 
-1.  **Clone the repository (or use it as a template on GitHub):**
+1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/your-repo-name.git
-    cd your-repo-name
+    git clone https://github.com/your-username/ai-agents.git
+    cd ai-agents
     ```
 
 2.  **Create and activate a virtual environment:**
@@ -59,7 +220,7 @@ python-project-template/
 
 3.  **Install dependencies:**
     ```bash
-    pip install -r requirements.txt -r requirements-dev.txt
+    pip install -e .
     ```
 
 4.  **Set up environment variables:**
@@ -92,7 +253,7 @@ This project uses `pre-commit` with `black` for code formatting and `ruff` for l
 
 1.  Ensure you have installed development dependencies:
     ```bash
-    pip install -r requirements-dev.txt
+    pip install -e .[dev]
     ```
 2.  Install the pre-commit hooks:
     ```bash
@@ -117,58 +278,6 @@ This project uses `pre-commit` with `black` for code formatting and `ruff` for l
     ruff format .
     ruff check . --fix
     ```
-
-## Building and Running with Docker
-
-1.  **Build the Docker image:**
-    ```bash
-    docker build -t your-project-name .
-    ```
-
-2.  **Run the Docker container:**
-    Make sure to pass your `.env` file to the container if it contains necessary runtime configurations.
-    ```bash
-    docker run --env-file .env -p 8000:8000 your-project-name
-    # Adjust port mapping as needed
-    ```
-
-## Branch Protection Setup
-
-To set up branch protection rules for a secure development workflow:
-
-### Setting Up Branch Protection Rules
-
-1. **Protect the main branch:**
-   ```bash
-   # Enable branch protection with PR requirements
-   gh api --method PUT repos/:owner/:repo/branches/main/protection \
-     --field required_status_checks='{"strict":true,"contexts":[]}' \
-     --field enforce_admins=true \
-     --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true}' \
-     --field restrictions=null
-
-   # Enable admin enforcement (applies rules to repo owners too)
-   gh api -X POST repos/:owner/:repo/branches/main/protection/enforce_admins
-   ```
-
-2. **Protect the dev branch:**
-   ```bash
-   # Enable branch protection with PR requirements
-   gh api --method PUT repos/:owner/:repo/branches/dev/protection \
-     --field required_status_checks='{"strict":true,"contexts":[]}' \
-     --field enforce_admins=true \
-     --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true}' \
-     --field restrictions=null
-
-   # Enable admin enforcement
-   gh api -X POST repos/:owner/:repo/branches/dev/protection/enforce_admins
-   ```
-
-### Workflow
-After protection is enabled:
-- Feature branches → PR to `dev`
-- `dev` → PR to `main`
-- Direct pushes to protected branches are blocked (even for admins)
 
 ## Contributing
 
