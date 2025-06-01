@@ -4,10 +4,9 @@ Utility functions for common file I/O operations.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Union
 
 
-def read_file_content(file_path: Union[str, Path]) -> str:
+def read_file_content(file_path: str | Path) -> str:
     """
     Read the entire content of a file as a string.
 
@@ -27,10 +26,10 @@ def read_file_content(file_path: Union[str, Path]) -> str:
     except FileNotFoundError as e:
         raise FileNotFoundError(f"File not found: {path}") from e
     except Exception as e:
-        raise IOError(f"Error reading file {path}: {e}") from e
+        raise OSError(f"Error reading file {path}: {e}") from e
 
 
-def write_file_content(file_path: Union[str, Path], content: str) -> None:
+def write_file_content(file_path: str | Path, content: str) -> None:
     """
     Write content to a file, creating parent directories if they don't exist.
 
@@ -47,7 +46,7 @@ def write_file_content(file_path: Union[str, Path], content: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     except Exception as e:
-        raise IOError(f"Error writing to file {path}: {e}") from e
+        raise OSError(f"Error writing to file {path}: {e}") from e
 
 
 def replace_prompt_placeholders(prompt_template: str, **kwargs: str) -> str:

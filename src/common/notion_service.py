@@ -258,7 +258,7 @@ class NotionService:
                 properties[key] = {"rich_text": [{"text": {"content": str(value)}}]}
             elif property_type == "number":
                 try:
-                    properties[key] = {"number": float(value) if isinstance(value, (int, float, str)) else None}
+                    properties[key] = {"number": float(value) if isinstance(value, int | float | str) else None}
                 except (ValueError, TypeError):
                     properties[key] = {"number": None}
             elif property_type == "checkbox":

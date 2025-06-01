@@ -1,6 +1,6 @@
 """Tests for the LLM clients module."""
 
-from typing import Generator
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import openai
@@ -13,7 +13,7 @@ class TestOpenAIClient:
     """Test suite for the OpenAIClient class."""
 
     @pytest.fixture
-    def mock_openai_client(self) -> Generator[MagicMock, None, None]:
+    def mock_openai_client(self) -> Generator[MagicMock]:
         """Create a mock OpenAI client with realistic response structure from API docs."""
         with patch("openai.OpenAI") as mock_client:
             # Real OpenAI Responses API structure

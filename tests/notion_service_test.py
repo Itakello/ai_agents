@@ -1,6 +1,7 @@
 """Tests for the NotionService class."""
 
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +13,7 @@ class TestNotionService:
     """Test suite for the NotionService class."""
 
     @pytest.fixture
-    def mock_client(self) -> Generator[MagicMock, None, None]:
+    def mock_client(self) -> Generator[MagicMock]:
         """Create a mock Notion client with realistic response structures from API docs."""
         with patch("src.common.notion_service.NotionClient") as mock_client_class:
             # Real Notion API page response structure
