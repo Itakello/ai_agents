@@ -12,16 +12,41 @@ The Job Finder Assistant aims to streamline the initial phases of job applicatio
     *   Future iteration: Allow users to provide additional instructions/preferences for enhanced contextual understanding.
 
 2.  **Resume Tailoring:**
-    *   Adapt a user's master resume (provided in `.tex` format) to a specific job description.
-    *   The goal is to produce a concise, targeted, 1-page resume by selectively removing less relevant content, rewriting or merging sentences for impact, and incorporating keywords from the job description.
-    *   The tailored resume must maintain the structural integrity and coherence of the master resume, adhering to readability principles like the F-shape pattern (prioritizing key information top-left).
+    *   Adapt a user's master resume (provided in `.tex` format) to a specific job description and extracted job metadata.
+    *   The LLM prompt must:
+        *   Take as input the job properties (metadata) and the master resume `.tex` file.
+        *   Add the job position being applied for at the top of the resume.
+        *   Include at the top a summary of max 3 sentences, concisely stating who the user is and why they are applying for the job.
+        *   Ensure the tailored resume is comprehensive, cohesive, and highlights the user's best and most relevant skills, experiences, and projects for the job.
+        *   Keep the PDF length to 1 page. If the output is longer, retry until it fits.
+        *   Only explain (in a separate summary) why it kept, updated, or added specific parts (not why it removed content).
+    *   The pipeline generates two PDFs:
+        *   The tailored resume PDF.
+        *   The tailored resume diff PDF (using `latexdiff` between master and tailored `.tex`).
+    *   Both PDFs are inserted into the Notion DB in the properties "Tailored Resume" and "Tailored Resume Diff".
+    *   The summary of why content was kept/updated/added is also inserted into a Notion property (e.g., "Resume Tailoring Summary").
     *   Utilize the OpenAI `gpt-4.1` model for this task.
-    *   The LLM output will include the tailored `.tex` file and a textual description of the changes made, along with their motivation.
     *   The user has an existing process to generate a `latexdiff` and PDF from the original and tailored `.tex` files. This process will be integrated into the application.
-    *   The final tailored resume (as a PDF) will be uploaded to the corresponding job entry in Notion.
+    *   The final tailored resume (as a PDF) and the diff PDF will be uploaded to the corresponding job entry in Notion.
     *   Future iteration: Allow for iterative refinement of the tailored resume based on user feedback and additional instructions.
 
-**Overall Goal:** To create an efficient, OpenAI LLM-powered assistant that helps users quickly assess job opportunities and prepare tailored application materials, starting with metadata extraction and resume customization.
+**3. Hosted Service & Webhook Integration**
+
+To enable scalable, automated job processing, the system will support running as a hosted web service with webhook integration:
+
+*   **Web Service (e.g., FastAPI):**
+    *   Exposes endpoints for metadata extraction and resume tailoring.
+    *   Accepts requests with a Notion page URL or ID, or is triggered by a Notion database button via webhook.
+    *   Handles the full pipeline: fetches job description, extracts metadata, tailors the resume, generates PDFs, and updates Notion DB properties.
+    *   Returns status and results via API or updates Notion directly.
+*   **Webhook Integration:**
+    *   Notion DB button triggers a webhook to the hosted service.
+    *   The webhook handler starts the pipeline for the given job entry.
+    *   Enables batch processing and removes the need for manual script execution.
+    *   Supports scaling job research and resume tailoring for many jobs in parallel.
+*   **Security & Auth:**
+    *   API keys and secrets managed via environment/config as before.
+    *   Webhook endpoints secured (e.g., with secret tokens or IP allowlist).
 
 ## 2. Core Architectural Style
 

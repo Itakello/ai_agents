@@ -125,53 +125,65 @@ This document outlines the granular tasks required to build the Minimum Viable P
     - Create `src/resume_tailoring/tailor_service.py`.
     - Implement `TailorService` class.
     - Constructor takes `OpenAIClient`, `LatexService`, `NotionService`.
-    - Implement `tailor_resume(self, job_description_text: str, master_resume_tex_content: str, notion_page_id: str, output_filename_stem: str, generate_diff: bool = False) -> None`:
-        1. Construct prompt for OpenAI: include job description, master resume `.tex` content, and request for tailored `.tex` and summary of changes (as per `TailoredResumeOutput` model).
-        2. Call `OpenAIClient` to get `TailoredResumeOutput`.
-        3. `LatexService`: Save the `tailored_tex_content` (e.g., `output/tailored_resumes/<output_filename_stem>.tex`). Let's call this `tailored_tex_path`.
+    - Implement `tailor_resume(self, job_description_text: str, job_metadata: dict, master_resume_tex_content: str, notion_page_id: str, output_filename_stem: str, generate_diff: bool = False) -> None`:
+        1. Construct LLM prompt:
+            - Input: job description, extracted job metadata, master resume `.tex` content.
+            - Requirements:
+                * Add job position at the top.
+                * Add a 3-sentence summary at the top (who I am, why I’m applying, concise).
+                * Make the tailored resume comprehensive, cohesive, and highlight best/most relevant skills/experiences/projects.
+                * Keep the PDF length to 1 page (retry if not).
+                * Only explain (in a summary) why it kept/updated/added content (not why it removed).
+        2. Call `OpenAIClient` to get `TailoredResumeOutput` (tailored `.tex` and summary of changes).
+        3. `LatexService`: Save the `tailored_tex_content` (e.g., `output/tailored_resumes/<output_filename_stem>.tex`).
         4. `LatexService`: Compile `tailored_tex_path` to PDF. Let's call this `tailored_pdf_path`.
-        5. `NotionService`: Update Notion page (`notion_page_id`) with `changes_summary` (e.g., to a property "Resume Changes Summary") and the local path to `tailored_pdf_path` (e.g., to a property "Tailored Resume PDF Path").
+        5. `NotionService`: Update Notion page (`notion_page_id`) with:
+            - The summary of why content was kept/updated/added (e.g., to property "Resume Tailoring Summary").
+            - The local path to `tailored_pdf_path` (e.g., to property "Tailored Resume").
         6. If `generate_diff`:
             a. `LatexService`: Run `latexdiff` between master resume (`Settings.MASTER_RESUME_PATH`) and `tailored_tex_path`. Get `diff_tex_path`.
             b. `LatexService`: Compile `diff_tex_path` to PDF. Get `diff_pdf_path`.
-            c. `NotionService`: Update Notion page with local path to `diff_pdf_path` (e.g., to "Resume Diff PDF Path").
+            c. `NotionService`: Update Notion page with local path to `diff_pdf_path` (e.g., to property "Tailored Resume Diff").
     - *Test:* Unit test with mocked `OpenAIClient`, `LatexService`, `NotionService`. Provide sample inputs, mock LLM response, and verify correct service calls and data flow.
 
-- - [ ] **Task 2.6: Integrate Resume Tailoring into `main_cli.py`**
-    - Add a new command to `src/main_cli.py`, e.g., `tailor-resume`.
+- - [ ] **Task 2.6: Integrate Resume Tailoring into `main.py`**
+    - Add a new command to `src/main.py`, e.g., `tailor-resume`.
     - Command takes Notion Page ID (`--page-id`), master resume path (`--master-resume` - can default to `Settings.MASTER_RESUME_PATH`), output filename stem (`--output-stem`), and an optional flag for diff (`--diff`).
     - Logic:
         1. Initialize `Settings`, `OpenAIClient`, `PDFCompiler`, `LatexService`, `NotionService`, `TailorService`.
-        2. `NotionService`: Fetch job description text from the Notion page.
+        2. `NotionService`: Fetch job description text and job metadata from the Notion page.
         3. `common.utils.read_file_content`: Read master resume `.tex` content.
         4. `TailorService`: Call `tailor_resume`.
         5. Print confirmation to console.
     - *Test:* Manual end-to-end test: Setup Notion page, master resume. Run CLI. Verify tailored PDF (and diff PDF if requested) are generated in the output directory, and Notion page is updated with summary and file paths. Mock external calls for automated testing if feasible.
 
-## 3. CLI Enhancements and Finalization
+## 3. Feature: Hosted Service & Webhook Integration
 
-- - [ ] **Task 3.1: Refine CLI in `main_cli.py`**
-    - Ensure consistent error handling and user feedback for all commands.
-    - Add help messages for commands and arguments using `argparse`.
-    - Structure `main_cli.py` clearly, perhaps with functions for each command's logic.
-    - *Test:* Manually test CLI commands for various valid and invalid inputs. Check help messages.
+- - [ ] **Task 3.1: Set Up Hosted Web Service (FastAPI)**
+    - Create `src/web_service.py` (or similar).
+    - Set up FastAPI app with endpoints for:
+        - `/extract-metadata` (POST): Accepts Notion page URL/ID, triggers metadata extraction pipeline.
+        - `/tailor-resume` (POST): Accepts Notion page URL/ID, triggers resume tailoring pipeline.
+    - *Test:* Start server locally, hit endpoints with sample payloads, verify correct pipeline execution (mock external calls).
 
-- - [ ] **Task 3.2: Create `README.md` Instructions**
-    - Document project setup: Python version, environment creation (e.g., using `venv` or `conda`), installing dependencies (`pip install -r requirements.txt`).
-    - How to configure `.env` file with API keys and paths.
-    - Detailed usage instructions for each CLI command, including examples.
-    - Explanation of the output directory structure.
-    - *Test:* Follow the README instructions from scratch in a clean environment to ensure they are accurate and complete.
+- - [ ] **Task 3.2: Implement Notion Webhook Handler**
+    - Add endpoint `/notion-webhook` (POST): Handles webhook requests from Notion DB button.
+    - Parse payload, extract Notion page ID, trigger full pipeline (metadata extraction + resume tailoring).
+    - *Test:* Simulate webhook POST from Notion, verify pipeline runs and Notion DB is updated.
 
-- - [ ] **Task 3.3: Create `requirements.txt` and `requirements-dev.txt`**
-    - `requirements.txt`: List runtime dependencies (`openai`, `notion-client`, `pydantic`, `pydantic-settings`, `httpx`, `pathlib` (though pathlib is standard lib)).
-    - `requirements-dev.txt`: List development/testing dependencies (`pytest`, `pytest-mock`, `coverage`, linters/formatters if used e.g. `ruff`, `black`).
-    - Pin dependency versions for reproducibility.
-    - *Test:* Create a fresh virtual environment and install dependencies using both files to ensure they work.
+- - [ ] **Task 3.3: Automate Full Pipeline on Webhook Trigger**
+    - On webhook, orchestrate:
+        1. Fetch job description and metadata from Notion.
+        2. Run metadata extraction (if not already done).
+        3. Run resume tailoring (as above).
+        4. Generate PDFs and update Notion DB properties.
+    - *Test:* End-to-end test with mocked Notion and LLM calls.
 
-- - [ ] **Task 3.4: (Optional) Basic Logging Implementation**
-    - Add basic logging using the `logging` module to key service methods for better traceability.
-    - Configure a simple logger in `main_cli.py`.
-    - *Test:* Run CLI commands and check if logs are produced as expected (e.g., to console or a file).
+- - [ ] **Task 3.4: Security and Configuration**
+    - Secure webhook endpoints (e.g., secret token, IP allowlist).
+    - Ensure API keys and secrets are loaded from environment/config.
+    - *Test:* Attempt unauthorized requests, verify they are rejected.
 
-This task list should provide a clear path to MVP. Each task aims to deliver a testable piece of functionality.
+- - [ ] **Task 3.5: Scalability and Batch Processing**
+    - Support batch processing of multiple jobs (e.g., queue or async tasks).
+    - *Test:* Trigger multiple webhooks/jobs, verify all are processed and Notion DB is updated.
