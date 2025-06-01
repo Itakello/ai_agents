@@ -88,7 +88,7 @@ notion_properties = {
         "description": "Task title"
     },
     "status": {
-        "type": "select", 
+        "type": "select",
         "description": "Current status #keep-options",
         "select": {"options": [{"name": "Todo"}, {"name": "In Progress"}, {"name": "Done"}]}
     },
@@ -107,7 +107,7 @@ schema = create_openai_schema_from_notion_database(notion_properties, add_option
     "properties": {
         "title": {"type": "string", "description": "Task title"},
         "status": {
-            "type": "string", 
+            "type": "string",
             "description": "Current status #keep-options",
             "enum": ["Todo", "In Progress", "Done"]
         }

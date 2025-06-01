@@ -9,7 +9,6 @@ import hashlib
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 import pypandoc  # type: ignore
@@ -62,7 +61,7 @@ class URLCache:
         """
         return hashlib.sha256(url.encode()).hexdigest()
 
-    def get_cached_content(self, url: str) -> Optional[str]:
+    def get_cached_content(self, url: str) -> str | None:
         """Retrieve cached markdown content for a URL.
 
         Args:

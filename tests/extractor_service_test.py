@@ -1,6 +1,7 @@
 """Tests for the ExtractorService class."""
 
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,14 +13,14 @@ class TestExtractorService:
     """Test suite for the ExtractorService class."""
 
     @pytest.fixture
-    def mock_openai_client(self) -> Generator[MagicMock, None, None]:
+    def mock_openai_client(self) -> Generator[MagicMock]:
         """Create a mock OpenAI client."""
         mock_client = MagicMock()
         mock_client.get_response.return_value = '{"job_title": "Software Engineer", "company": "Tech Corp"}'
         yield mock_client
 
     @pytest.fixture
-    def mock_notion_service(self) -> Generator[MagicMock, None, None]:
+    def mock_notion_service(self) -> Generator[MagicMock]:
         """Create a mock Notion service."""
         mock_service = MagicMock()
         yield mock_service
