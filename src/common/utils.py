@@ -2,6 +2,7 @@
 Utility functions for common file I/O operations.
 """
 
+from datetime import datetime
 from pathlib import Path
 from typing import Union
 
@@ -47,3 +48,38 @@ def write_file_content(file_path: Union[str, Path], content: str) -> None:
         path.write_text(content, encoding="utf-8")
     except Exception as e:
         raise IOError(f"Error writing to file {path}: {e}") from e
+
+
+def replace_prompt_placeholders(prompt_template: str, **kwargs: str) -> str:
+    """
+    Replace placeholders in a prompt template with dynamic values.
+
+    Automatically includes the current date as {{CURRENT_DATE}}.
+
+    Args:
+        prompt_template: The prompt template string with placeholders.
+        **kwargs: Additional key-value pairs to replace in the template.
+
+    Returns:
+        str: The prompt with placeholders replaced.
+
+    Example:
+        >>> template = "Today is {{CURRENT_DATE}}. Process {{URL}}."
+        >>> replace_prompt_placeholders(template, URL="https://example.com")
+        "Today is December 15, 2024. Process https://example.com."
+    """
+    # Get current date in a readable format
+    current_date = datetime.now().strftime("%B %d, %Y")
+
+    # Start with the template
+    result = prompt_template
+
+    # Replace current date placeholder
+    result = result.replace("{{CURRENT_DATE}}", current_date)
+
+    # Replace any additional placeholders
+    for key, value in kwargs.items():
+        placeholder = f"{{{{{key}}}}}"
+        result = result.replace(placeholder, value)
+
+    return result

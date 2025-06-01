@@ -16,7 +16,7 @@ from crawl4ai.models import CrawlResultContainer  # type: ignore
 
 from ..common.llm_clients import OpenAIClient
 from ..common.notion_service import NotionService
-from ..common.utils import read_file_content
+from ..common.utils import read_file_content, replace_prompt_placeholders
 from ..core.config import get_settings
 from .cache import URLCache
 from .models import create_openai_schema_from_notion_database
@@ -109,7 +109,7 @@ class ExtractorService:
         settings = get_settings()
         prompt_path = settings.PROMPTS_DIRECTORY / settings.METADATA_EXTRACTION_PROMPT_FILE
         sys_prompt_template = read_file_content(prompt_path)
-        sys_prompt = sys_prompt_template.replace("{{URL}}", job_url)
+        sys_prompt = replace_prompt_placeholders(sys_prompt_template, URL=job_url)
 
         return self.openai_client.get_structured_response(
             sys_prompt=sys_prompt,
@@ -158,7 +158,7 @@ class ExtractorService:
         settings = get_settings()
         prompt_path = settings.PROMPTS_DIRECTORY / settings.CRAWL4AI_PROMPT_FILE
         prompt_template = read_file_content(prompt_path)
-        prompt = prompt_template.replace("{{CONTENT}}", markdown_content)
+        prompt = replace_prompt_placeholders(prompt_template, CONTENT=markdown_content)
 
         # Use OpenAI for structured extraction
         return self.openai_client.get_structured_response(
