@@ -7,7 +7,6 @@ Notion database schemas.
 """
 
 import asyncio
-import json
 from enum import Enum
 from typing import Any
 
