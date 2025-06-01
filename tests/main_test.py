@@ -12,33 +12,36 @@ from src.metadata_extraction.extractor_service import ExtractionMethod
 class TestParseArguments:
     """Test the parse_arguments function."""
 
-    @patch("sys.argv", ["main.py", "https://example.com/job"])
+    @patch("sys.argv", ["main.py", "extract", "https://example.com/job"])
     def test_parse_arguments_with_defaults(self) -> None:
         """Test parsing arguments with default model."""
         args = parse_arguments(default_model="gpt-4-test")
-        assert args.job_url == "https://example.com/job"
-        assert args.model == "gpt-4-test"
-        assert args.method == "openai_web_search"
-
-    @patch("sys.argv", ["main.py", "https://example.com/job", "--model", "gpt-3.5-turbo"])
-    def test_parse_arguments_with_custom_model(self) -> None:
-        """Test parsing arguments with custom model."""
-        args = parse_arguments(default_model="gpt-4-test")
-        assert args.job_url == "https://example.com/job"
-        assert args.model == "gpt-3.5-turbo"
-        assert args.method == "openai_web_search"
-
-    @patch("sys.argv", ["main.py", "https://example.com/job", "--method", "crawl4ai_plus_gpt"])
-    def test_parse_arguments_with_custom_method(self) -> None:
-        """Test parsing arguments with custom extraction method."""
-        args = parse_arguments(default_model="gpt-4-test")
+        assert args.command == "extract"
         assert args.job_url == "https://example.com/job"
         assert args.model == "gpt-4-test"
         assert args.method == "crawl4ai_plus_gpt"
 
+    @patch("sys.argv", ["main.py", "extract", "https://example.com/job", "--model", "gpt-3.5-turbo"])
+    def test_parse_arguments_with_custom_model(self) -> None:
+        """Test parsing arguments with custom model."""
+        args = parse_arguments(default_model="gpt-4-test")
+        assert args.command == "extract"
+        assert args.job_url == "https://example.com/job"
+        assert args.model == "gpt-3.5-turbo"
+        assert args.method == "crawl4ai_plus_gpt"
+
+    @patch("sys.argv", ["main.py", "extract", "https://example.com/job", "--method", "openai_web_search"])
+    def test_parse_arguments_with_custom_method(self) -> None:
+        """Test parsing arguments with custom extraction method."""
+        args = parse_arguments(default_model="gpt-4-test")
+        assert args.command == "extract"
+        assert args.job_url == "https://example.com/job"
+        assert args.model == "gpt-4-test"
+        assert args.method == "openai_web_search"
+
     @patch("sys.argv", ["main.py"])
     def test_parse_arguments_missing_url(self) -> None:
-        """Test parsing arguments when URL is missing."""
+        """Test parsing arguments when no command is specified."""
         with pytest.raises(SystemExit):
             parse_arguments()
 
@@ -66,9 +69,11 @@ class TestMain:
         """Test successful execution of the main function."""
         # Setup argument mock
         mock_args = MagicMock()
+        mock_args.command = "extract"
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
         mock_args.method = "openai_web_search"
+        mock_args.add_properties_options = False
         mock_parse_arguments.return_value = mock_args
 
         # Setup settings mock

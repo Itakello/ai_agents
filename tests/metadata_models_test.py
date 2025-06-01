@@ -78,7 +78,7 @@ class TestNotionPropertyToOpenAISchema:
                 ]
             },
         }
-        result = notion_property_to_openai_schema(notion_prop, add_options=False)
+        result = notion_property_to_openai_schema(notion_prop, add_options=True)
         assert result == {"type": "array", "items": {"type": "string", "enum": ["Python", "JavaScript"]}}
 
     def test_multi_select_property_without_options(self) -> None:
@@ -281,7 +281,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=True)
 
         expected = {
             "type": "object",
