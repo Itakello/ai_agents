@@ -2,6 +2,11 @@
 
 This module provides functions to convert between Notion property schemas and OpenAI JSON schemas,
 as well as converting data between the two formats.
+
+Special description directives:
+- #exclude: Skip this property in schema generation
+- #keep-options: Always include enum options for select/multi_select/status properties
+- Custom descriptions are preserved and used in the generated schema
 """
 
 import random
@@ -124,35 +129,110 @@ def openai_data_to_notion_property(value: Any, property_type: str) -> dict[str, 
             return {"rich_text": [{"text": {"content": str(value)}}]}
 
 
+def _should_exclude_property(prop_type: str, prop_desc: str) -> bool:
+    """Check if a property should be excluded from schema generation.
+
+    Args:
+        prop_type: The Notion property type
+        prop_desc: The property description (case-insensitive)
+
+    Returns:
+        True if the property should be excluded
+    """
+    readonly_types = {"created_time", "created_by", "last_edited_time", "last_edited_by", "formula", "rollup"}
+    return prop_type in readonly_types or "#exclude" in prop_desc
+
+
+def _should_keep_options(prop_desc: str) -> bool:
+    """Check if a property should keep its enum options.
+
+    Args:
+        prop_desc: The property description (case-insensitive)
+
+    Returns:
+        True if options should be preserved
+    """
+    return "#keep-options" in prop_desc
+
+
+def _generate_example_description(prop_config: dict[str, Any], prop_type: str) -> str:
+    """Generate example description for select/multi_select/status properties.
+
+    Args:
+        prop_config: The property configuration
+        prop_type: The property type
+
+    Returns:
+        Example description string
+    """
+    options = prop_config.get(prop_type, {}).get("options", [])
+    if not options:
+        return ""
+
+    # Sample up to 3 random options for examples
+    sample_size = min(3, len(options))
+    sampled_examples = random.sample(options, sample_size)
+    example_names = [option["name"] for option in sampled_examples]
+
+    return "e.g. " + ", ".join(example_names) + ", ..."
+
+
 def create_openai_schema_from_notion_database(notion_properties: dict[str, Any], add_options: bool) -> dict[str, Any]:
     """Create a complete OpenAI JSON Schema from Notion database properties.
 
+    This function converts Notion database properties into an OpenAI-compatible JSON schema
+    for structured output. It handles special description directives and option sampling.
+
     Args:
         notion_properties: Dictionary of Notion property definitions
+        add_options: Whether to include enum options for select properties
 
     Returns:
         Complete OpenAI JSON Schema for structured output
+
+    Special description directives:
+        - #exclude: Property will be skipped entirely
+        - #keep-options: Property options will always be included as enums (overrides add_options=False)
+
+    Example:
+        >>> properties = {
+        ...     "status": {
+        ...         "type": "select",
+        ...         "description": "Task status #keep-options",
+        ...         "select": {"options": [{"name": "Todo"}, {"name": "Done"}]}
+        ...     }
+        ... }
+        >>> schema = create_openai_schema_from_notion_database(properties, add_options=False)
+        >>> schema["properties"]["status"]["enum"]
+        ["Todo", "Done"]
     """
     schema: dict[str, Any] = {"type": "object", "properties": {}, "required": [], "additionalProperties": False}
 
     for prop_name, prop_config in notion_properties.items():
-        # Skip read-only properties
         prop_type = prop_config.get("type")
         prop_desc = prop_config.get("description", "").strip().lower()
-        if prop_type in ["created_time", "created_by", "last_edited_time", "last_edited_by", "formula", "rollup"]:
-            continue
-        if "#exclude" in prop_desc:
-            continue
-        if not add_options and prop_type in ["select", "multi_select", "status"]:
-            sampled_examples = random.sample(
-                prop_config.get(prop_type, {}).get("options", []),
-                min(3, len(prop_config.get(prop_type, {}).get("options", []))),
-            )
-            prop_config["description"] = "e.g. " + ", ".join([option["name"] for option in sampled_examples]) + ", ..."
-            if prop_desc:
-                prop_config["description"] = prop_desc + "|" + prop_config["description"]
 
-        schema["properties"][prop_name] = notion_property_to_openai_schema(prop_config, add_options=add_options)
+        # Skip excluded properties
+        if _should_exclude_property(prop_type, prop_desc):
+            continue
+
+        # Determine if we should add options for this specific property
+        force_keep_options = _should_keep_options(prop_desc)
+        include_options = add_options or force_keep_options
+
+        # Generate example descriptions for select-type properties when not including options
+        if not include_options and prop_type in ["select", "multi_select", "status"] and not force_keep_options:
+            example_desc = _generate_example_description(prop_config, prop_type)
+            if example_desc:
+                # Preserve original description if it exists
+                original_desc = prop_config.get("description", "").strip()
+                if original_desc and not original_desc.lower().startswith("#"):
+                    prop_config["description"] = f"{original_desc} | {example_desc}"
+                else:
+                    prop_config["description"] = example_desc
+
+        # Convert to OpenAI schema
+        schema["properties"][prop_name] = notion_property_to_openai_schema(prop_config, add_options=include_options)
         schema["required"].append(prop_name)
 
     return schema
