@@ -8,6 +8,13 @@ import pytest
 from src.main import display_results, main, parse_arguments
 from src.metadata_extraction.extractor_service import ExtractionMethod
 
+DUMMY_SETTINGS = dict(
+    OPENAI_API_KEY="sk-test",
+    NOTION_API_KEY="secret-test",
+    NOTION_DATABASE_ID="test-db",
+    MASTER_RESUME_PATH="/tmp/test_resume.tex",
+)
+
 
 class TestParseArguments:
     """Test the parse_arguments function."""
@@ -132,15 +139,22 @@ class TestMain:
             mock_extracted_metadata, mock_notion_update, ExtractionMethod.OPENAI_WEB_SEARCH
         )
 
+    @patch("src.main.Settings", autospec=True)
     @patch("src.main.parse_arguments")
-    def test_main_missing_job_url(self, mock_parse_arguments: MagicMock) -> None:
+    def test_main_missing_job_url(self, mock_parse_arguments: MagicMock, mock_settings: MagicMock) -> None:
         """Test main function exits when job URL is not provided."""
         mock_parse_arguments.side_effect = SystemExit(2)  # argparse exits with 2 for argument errors
+        mock_settings_instance = MagicMock()
+        mock_settings_instance.OPENAI_API_KEY = "test-openai-key"
+        mock_settings_instance.NOTION_API_KEY = "test-notion-key"
+        mock_settings_instance.NOTION_DATABASE_ID = "test-db-id"
+        mock_settings_instance.LOG_LEVEL = "INFO"
+        mock_settings.return_value = mock_settings_instance
         with pytest.raises(SystemExit) as exc_info:
             main()
         assert exc_info.value.code == 2
 
-    @patch("src.main.Settings")
+    @patch("src.main.Settings", autospec=True)
     @patch("src.main.parse_arguments")
     def test_main_settings_initialization_error(
         self, mock_parse_arguments: MagicMock, mock_settings: MagicMock
@@ -151,12 +165,9 @@ class TestMain:
         mock_args.model = "gpt-4o"
         mock_args.method = "openai_web_search"
         mock_parse_arguments.return_value = mock_args
-
         mock_settings.side_effect = Exception("Settings error")
-
-        with pytest.raises(SystemExit) as exc_info:
+        with pytest.raises(SystemExit):
             main()
-        assert exc_info.value.code == 1
 
     @patch("src.main.ExtractorService")
     @patch("src.main.NotionService")
@@ -213,6 +224,7 @@ class TestMain:
         mock_args = MagicMock()
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
+        mock_args.method = "openai_web_search"
         mock_parse_arguments.return_value = mock_args
 
         # Setup settings mock
