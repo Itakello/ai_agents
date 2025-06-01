@@ -6,7 +6,10 @@ You will be provided with the content of a job posting page that has been crawle
 Your task is to extract structured metadata from this content.
 
 ## INPUT
-Job Posting Content: {{CONTENT}}
+Job Posting Content:
+---
+{{CONTENT}}
+---
 
 ## OUTPUT FORMAT
 Return **only** valid JSON that passes the following JSON-Schema **exactly** (no extra keys, no commentary).
