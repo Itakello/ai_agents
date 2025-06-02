@@ -76,6 +76,10 @@ Examples:
         help="Specific URL to export (if not provided, exports all cached URLs)",
     )
     export_parser.add_argument(
+        "--job-id",
+        help="Job ID to export (if provided, exports the PDF for this job)",
+    )
+    export_parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("./exported_pdfs"),
@@ -131,6 +135,7 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
         notion_service=notion_service,
         add_properties_options=args.add_properties_options,
     )
+    cache = URLCache()
 
     # Get job URL and parameters from parsed arguments
     job_url = args.job_url
@@ -163,15 +168,25 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
     logger.info("Saving extracted metadata to Notion database...")
     try:
         # Ensure the ID property is present in the update
-        if "ID" in extracted_metadata and extracted_metadata["ID"]:
+        job_id = extracted_metadata.get("ID")
+        if job_id:
             if "ID" not in notion_update["properties"]:
-                notion_update["properties"]["ID"] = {"rich_text": [{"text": {"content": extracted_metadata["ID"]}}]}
+                notion_update["properties"]["ID"] = {"rich_text": [{"text": {"content": job_id}}]}
         saved_page = notion_service.save_or_update_extracted_data(url=job_url, extracted_data=extracted_metadata)
         page_id = saved_page.get("id", "unknown")
         logger.success(f"Successfully saved/updated page in Notion database (ID: {page_id})")
     except Exception as e:
         logger.error(f"Failed to save to Notion database: {str(e)}")
         # Continue execution to show results even if saving fails
+
+    # Save to cache with job_id
+    try:
+        job_id = extracted_metadata.get("ID")
+        markdown_content = extracted_metadata.get("Job Description") or ""
+        cache.cache_content(job_url, markdown_content, job_id=job_id)
+        logger.info(f"Cached job content for job_id: {job_id}")
+    except Exception as e:
+        logger.error(f"Failed to cache job content: {str(e)}")
 
     # Display results in CLI
     display_results(extracted_metadata, notion_update, extraction_method)
@@ -182,7 +197,12 @@ def handle_export_pdf_command(args: argparse.Namespace) -> None:
     cache = URLCache()
 
     try:
-        if args.url:
+        if hasattr(args, "job_id") and args.job_id:
+            # Export by job_id
+            logger.info(f"Exporting PDF for job_id: {args.job_id}")
+            pdf_path = cache.export_to_pdf_by_job_id(args.job_id, args.output_dir)
+            logger.success(f"PDF exported successfully: {pdf_path}")
+        elif args.url:
             # Export specific URL
             logger.info(f"Exporting PDF for URL: {args.url}")
             pdf_path = cache.export_to_pdf(args.url, args.output_dir)
@@ -213,6 +233,7 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
     tailor_service = TailorService(
         openai_client=openai_client, latex_service=latex_service, notion_service=notion_service
     )
+    cache = URLCache()
 
     # Get parameters
     job_id = args.job_id
@@ -225,19 +246,15 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
     logger.info("Diff PDF will always be generated.")
 
     try:
-        # Fetch job description and metadata from Notion page
-        logger.info("Fetching job information from Notion page...")
+        # Fetch job description and metadata from cache using job_id
+        logger.info("Fetching job information from cache using job_id...")
+        markdown_content = cache.get_cached_content_by_job_id(job_id)
+        if not markdown_content:
+            logger.error(f"No cached content found for job_id: {job_id}")
+            sys.exit(1)
+        job_description_text = markdown_content
+        # Optionally, fetch more metadata from Notion if needed
         page_content = notion_service.get_page_content(settings.NOTION_DATABASE_ID)
-
-        # Extract job description (assuming it's in a "Job Description" property)
-        job_description_text = ""
-        if "properties" in page_content:
-            job_desc_prop = page_content["properties"].get("Job Description", {})
-            if job_desc_prop.get("type") == "rich_text":
-                job_description_text = "".join(
-                    [text.get("plain_text", "") for text in job_desc_prop.get("rich_text", [])]
-                )
-
         # Create job metadata from page properties (simplified for MVP)
         job_metadata = {}
         if "properties" in page_content:
@@ -260,7 +277,7 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
                         job_metadata[prop_name] = url_value
 
         if not job_description_text:
-            logger.error("No job description found in the Notion page")
+            logger.error("No job description found in the cache for this job_id")
             sys.exit(1)
 
         # Read master resume content

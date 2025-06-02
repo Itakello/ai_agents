@@ -41,6 +41,7 @@ class URLCache:
                 CREATE TABLE IF NOT EXISTS url_cache (
                     url_hash TEXT PRIMARY KEY,
                     url TEXT NOT NULL,
+                    job_id TEXT,
                     markdown_content TEXT NOT NULL,
                     crawled_at TIMESTAMP NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -48,6 +49,7 @@ class URLCache:
             """)
             # Create index on url for faster lookups
             conn.execute("CREATE INDEX IF NOT EXISTS idx_url ON url_cache(url)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_job_id ON url_cache(job_id)")
             conn.commit()
 
     def _get_url_hash(self, url: str) -> str:
@@ -77,12 +79,13 @@ class URLCache:
             result = cursor.fetchone()
             return result[0] if result else None
 
-    def cache_content(self, url: str, markdown_content: str) -> None:
-        """Store markdown content in the cache for a URL.
+    def cache_content(self, url: str, markdown_content: str, job_id: str | None = None) -> None:
+        """Store markdown content in the cache for a URL, with optional job_id.
 
         Args:
             url: The URL that was crawled.
             markdown_content: The markdown content to cache.
+            job_id: Optional job ID to associate with the cached content.
         """
         url_hash = self._get_url_hash(url)
         crawled_at = datetime.now().isoformat()
@@ -92,49 +95,40 @@ class URLCache:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO url_cache
-                (url_hash, url, markdown_content, crawled_at)
-                VALUES (?, ?, ?, ?)
+                (url_hash, url, job_id, markdown_content, crawled_at)
+                VALUES (?, ?, ?, ?, ?)
             """,
-                (url_hash, url, markdown_content, crawled_at),
+                (url_hash, url, job_id, markdown_content, crawled_at),
             )
             conn.commit()
 
-    def clear_cache(self) -> None:
-        """Clear all cached content."""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute("DELETE FROM url_cache")
-            conn.commit()
+    def get_url_by_job_id(self, job_id: str) -> str | None:
+        """Retrieve the URL for a given job_id.
 
-    def get_cache_stats(self) -> dict[str, int]:
-        """Get statistics about the cache.
+        Args:
+            job_id: The job ID to look up.
 
         Returns:
-            Dictionary with cache statistics.
+            The URL associated with the job ID if found, None otherwise.
         """
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("SELECT COUNT(*) FROM url_cache")
-            total_entries = cursor.fetchone()[0]
+            cursor = conn.execute("SELECT url FROM url_cache WHERE job_id = ?", (job_id,))
+            result = cursor.fetchone()
+            return result[0] if result else None
 
-            cursor = conn.execute("SELECT SUM(LENGTH(markdown_content)) FROM url_cache")
-            total_size = cursor.fetchone()[0] or 0
+    def get_cached_content_by_job_id(self, job_id: str) -> str | None:
+        """Retrieve cached markdown content for a job_id.
 
-        return {"total_entries": total_entries, "total_size_bytes": total_size}
-
-    def list_cached_urls(self) -> list[dict[str, str]]:
-        """List all cached URLs with their metadata.
+        Args:
+            job_id: The job ID to look up in the cache.
 
         Returns:
-            List of dictionaries containing URL information.
+            The cached markdown content if found, None otherwise.
         """
         with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute("""
-                SELECT url, crawled_at, LENGTH(markdown_content) as content_size
-                FROM url_cache
-                ORDER BY crawled_at DESC
-            """)
-            results = cursor.fetchall()
-
-        return [{"url": row[0], "crawled_at": row[1], "content_size": row[2]} for row in results]
+            cursor = conn.execute("SELECT markdown_content FROM url_cache WHERE job_id = ?", (job_id,))
+            result = cursor.fetchone()
+            return result[0] if result else None
 
     def export_to_pdf(self, url: str, output_dir: Path) -> Path:
         """Export cached markdown content for a URL to PDF format using pandoc.
@@ -229,6 +223,62 @@ class URLCache:
                 )
 
         return output_path
+
+    def export_to_pdf_by_job_id(self, job_id: str, output_dir: Path) -> Path:
+        """Export cached markdown content for a job_id to PDF format using pandoc.
+
+        Args:
+            job_id: The job ID whose cached content to export.
+            output_dir: Directory to save the PDF file.
+
+        Returns:
+            Path to the generated PDF file.
+
+        Raises:
+            ValueError: If no URL is found for the job ID.
+            RuntimeError: If pandoc conversion fails.
+        """
+        url = self.get_url_by_job_id(job_id)
+        if not url:
+            raise ValueError(f"No URL found for job_id: {job_id}")
+        return self.export_to_pdf(url, output_dir)
+
+    def clear_cache(self) -> None:
+        """Clear all cached content."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("DELETE FROM url_cache")
+            conn.commit()
+
+    def get_cache_stats(self) -> dict[str, int]:
+        """Get statistics about the cache.
+
+        Returns:
+            Dictionary with cache statistics.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM url_cache")
+            total_entries = cursor.fetchone()[0]
+
+            cursor = conn.execute("SELECT SUM(LENGTH(markdown_content)) FROM url_cache")
+            total_size = cursor.fetchone()[0] or 0
+
+        return {"total_entries": total_entries, "total_size_bytes": total_size}
+
+    def list_cached_urls(self) -> list[dict[str, str]]:
+        """List all cached URLs with their metadata.
+
+        Returns:
+            List of dictionaries containing URL information.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT url, crawled_at, LENGTH(markdown_content) as content_size
+                FROM url_cache
+                ORDER BY crawled_at DESC
+            """)
+            results = cursor.fetchall()
+
+        return [{"url": row[0], "crawled_at": row[1], "content_size": row[2]} for row in results]
 
     def export_all_to_pdf(self, output_dir: Path) -> list[Path]:
         """Export all cached content to PDF files.
