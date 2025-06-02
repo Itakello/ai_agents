@@ -113,7 +113,7 @@ This document outlines the granular tasks required to build the Minimum Viable P
         - Returns path to the `_diff.tex` file or `None` on failure.
     - *Test:* Unit tests: Mock `PDFCompiler` and `subprocess.run` for `latexdiff`. Test file saving logic. Test compilation calls. Test `latexdiff` command formation.
 
-- - [ ] **Task 2.4: Enhance `NotionService` to Upload Files and Update Page with URL**
+- - [x] **Task 2.4: Enhance `NotionService` to Upload Files and Update Page with URL**
     - Add method `upload_file_to_page_property(self, page_id: str, property_name: str, file_path: Path) -> str | None` to `src/common/notion_service.py`.
         - This is tricky as Notion API doesn't directly support file uploads to page properties in the way one might expect for general files. It usually involves hosting the file elsewhere and linking the URL.
         - For MVP, this might mean: The method uploads the file to a pre-configured cloud storage (e.g., S3, not implemented in MVP) OR simply stores the *local file path* in the Notion property if direct upload is too complex for MVP.
@@ -121,7 +121,7 @@ This document outlines the granular tasks required to build the Minimum Viable P
         - So, this method will effectively be similar to `update_page_property` but specialized for file paths.
     - *Test:* Unit test with mocked `notion-client` call to update a page property with a file path string.
 
-- - [ ] **Task 2.5: Implement Core Logic in `src/resume_tailoring/tailor_service.py`**
+- - [x] **Task 2.5: Implement Core Logic in `src/resume_tailoring/tailor_service.py`**
     - Create `src/resume_tailoring/tailor_service.py`.
     - Implement `TailorService` class.
     - Constructor takes `OpenAIClient`, `LatexService`, `NotionService`.
