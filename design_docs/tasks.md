@@ -81,12 +81,12 @@ This document outlines the granular tasks required to build the Minimum Viable P
 
 ## 2. Feature: Resume Tailoring
 
-- - [ ] **Task 2.1: Define Pydantic Models for Tailored Resume in `src/resume_tailoring/models.py`**
+- - [x] **Task 2.1: Define Pydantic Models for Tailored Resume in `src/resume_tailoring/models.py`**
     - Create `src/resume_tailoring/models.py`.
     - Define `TailoredResumeOutput` model: `tailored_tex_content: str`, `changes_summary: str`.
     - *Test:* Basic Pydantic model instantiation and validation tests.
 
-- - [ ] **Task 2.2: Implement `src/resume_tailoring/pdf_compiler.py`**
+- - [x] **Task 2.2: Implement `src/resume_tailoring/pdf_compiler.py`**
     - Create `src/resume_tailoring/pdf_compiler.py`.
     - Implement `PDFCompiler` class.
     - Implement `compile_tex_to_pdf(self, tex_file_path: Path, output_directory: Path) -> Path | None`:
