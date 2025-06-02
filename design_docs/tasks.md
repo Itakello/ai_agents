@@ -98,7 +98,7 @@ This document outlines the granular tasks required to build the Minimum Viable P
         - Ensure it handles multiple runs of `pdflatex` if necessary for references/citations (though likely not needed for typical resumes).
     - *Test:* Unit test: Create a minimal valid `.tex` file. Mock `subprocess.run`. Verify `pdflatex` is called with correct arguments and output path. Test with a `.tex` file that successfully compiles (requires `pdflatex` installed in test environment or more complex mocking of file system operations).
 
-- - [ ] **Task 2.3: Implement `src/resume_tailoring/latex_service.py`**
+- - [x] **Task 2.3: Implement `src/resume_tailoring/latex_service.py`**
     - Create `src/resume_tailoring/latex_service.py`.
     - Implement `LatexService` class.
     - Constructor takes `PDFCompiler` instance and `Settings` (for output paths).
@@ -114,7 +114,7 @@ This document outlines the granular tasks required to build the Minimum Viable P
     - *Test:* Unit tests: Mock `PDFCompiler` and `subprocess.run` for `latexdiff`. Test file saving logic. Test compilation calls. Test `latexdiff` command formation.
 
 - - [ ] **Task 2.4: Enhance `NotionService` to Upload Files and Update Page with URL**
-    - Add method `upload_file_to_page_property(self, page_id: str, property_name: str, file_path: Path) -> str | None` to `src/metadata_extraction/notion_service.py`.
+    - Add method `upload_file_to_page_property(self, page_id: str, property_name: str, file_path: Path) -> str | None` to `src/common/notion_service.py`.
         - This is tricky as Notion API doesn't directly support file uploads to page properties in the way one might expect for general files. It usually involves hosting the file elsewhere and linking the URL.
         - For MVP, this might mean: The method uploads the file to a pre-configured cloud storage (e.g., S3, not implemented in MVP) OR simply stores the *local file path* in the Notion property if direct upload is too complex for MVP.
         - **Decision for MVP:** Store the local file path in a Text or URL property in Notion. The user will be responsible for accessing it locally. A more robust solution is post-MVP.
