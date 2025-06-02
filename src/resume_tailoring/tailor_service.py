@@ -95,9 +95,9 @@ class TailorService:
 
         # 9. Optionally generate diff
         if tailored_pdf_path:
-            from src.core.config import Settings
+            from src.core.config import get_settings
 
-            settings = Settings()
+            settings = get_settings()
             master_resume_path = Path(settings.MASTER_RESUME_PATH)
             self.latex_service.run_latexdiff(
                 master_resume_path, tailored_tex_path, output_filename_stem, output_subdir="outputs"
