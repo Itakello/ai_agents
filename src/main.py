@@ -7,7 +7,7 @@ from src.common.llm_clients import OpenAIClient
 from src.common.notion_service import NotionService
 from src.core.config import Settings
 from src.core.logger import logger
-from src.metadata_extraction.cache import URLCache
+from src.metadata_extraction.cache import JobCache
 from src.metadata_extraction.extractor_service import ExtractionMethod, ExtractorService
 from src.metadata_extraction.models import convert_openai_response_to_notion_update
 from src.resume_tailoring.latex_service import LatexService
@@ -135,7 +135,7 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
         notion_service=notion_service,
         add_properties_options=args.add_properties_options,
     )
-    cache = URLCache()
+    cache = JobCache()
 
     # Get job URL and parameters from parsed arguments
     job_url = args.job_url
@@ -183,8 +183,11 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
     try:
         job_id = extracted_metadata.get("ID")
         markdown_content = extracted_metadata.get("Job Description") or ""
-        cache.cache_content(job_url, markdown_content, job_id=job_id)
-        logger.info(f"Cached job content for job_id: {job_id}")
+        if job_id:
+            cache.cache_content(job_id, markdown_content)
+            logger.info(f"Cached job content for job_id: {job_id}")
+        else:
+            logger.warning("No job ID found in extracted metadata, skipping cache")
     except Exception as e:
         logger.error(f"Failed to cache job content: {str(e)}")
 
@@ -194,13 +197,13 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
 
 def handle_export_pdf_command(args: argparse.Namespace) -> None:
     """Handle the export-pdf command to export cached content to PDF files."""
-    cache = URLCache()
+    cache = JobCache()
 
     try:
         if hasattr(args, "job_id") and args.job_id:
             # Export by job_id
             logger.info(f"Exporting PDF for job_id: {args.job_id}")
-            pdf_path = cache.export_to_pdf_by_job_id(args.job_id, args.output_dir)
+            pdf_path = cache.export_to_pdf(args.job_id, args.output_dir)
             logger.success(f"PDF exported successfully: {pdf_path}")
         elif args.url:
             # Export specific URL
@@ -233,7 +236,7 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
     tailor_service = TailorService(
         openai_client=openai_client, latex_service=latex_service, notion_service=notion_service
     )
-    cache = URLCache()
+    cache = JobCache()
 
     # Get parameters
     job_id = args.job_id
@@ -248,7 +251,7 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
     try:
         # Fetch job description and metadata from cache using job_id
         logger.info("Fetching job information from cache using job_id...")
-        markdown_content = cache.get_cached_content_by_job_id(job_id)
+        markdown_content = cache.get_cached_content(job_id)
         if not markdown_content:
             logger.error(f"No cached content found for job_id: {job_id}")
             sys.exit(1)
@@ -308,8 +311,8 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
 
 def handle_list_cache_command() -> None:
     """Handle the list-cache command to list all cached URLs."""
-    cache = URLCache()
-    cached_urls = cache.list_cached_urls()
+    cache = JobCache()
+    cached_urls = cache.list_cached_job_ids()
 
     if not cached_urls:
         print("No URLs found in cache.")
@@ -318,10 +321,10 @@ def handle_list_cache_command() -> None:
     print(f"\nFound {len(cached_urls)} cached URLs:")
     print("=" * 80)
 
-    for i, url_info in enumerate(cached_urls, 1):
-        print(f"{i}. {url_info['url']}")
-        print(f"   Crawled: {url_info['crawled_at']}")
-        print(f"   Size: {url_info['content_size']:,} bytes")
+    for i, job_info in enumerate(cached_urls, 1):
+        print(f"{i}. Job ID: {job_info['job_id']}")
+        print(f"   Crawled: {job_info['crawled_at']}")
+        print(f"   Size: {job_info['content_size']:,} bytes")
         print()
 
 

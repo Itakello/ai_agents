@@ -19,7 +19,7 @@ from ..common.llm_clients import OpenAIClient
 from ..common.notion_service import NotionService
 from ..common.utils import read_file_content, replace_prompt_placeholders
 from ..core.config import get_settings
-from .cache import URLCache
+from .cache import JobCache
 from .models import create_openai_schema_from_notion_database
 
 
@@ -56,7 +56,7 @@ class ExtractorService:
         self.openai_client = openai_client
         self.notion_service = notion_service
         self.add_properties_options = add_properties_options
-        self.url_cache = URLCache()
+        self.url_cache = JobCache()
 
     def extract_metadata_from_job_url(
         self,
