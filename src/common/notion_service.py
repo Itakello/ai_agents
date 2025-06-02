@@ -5,6 +5,7 @@ This module contains the NotionService class which handles communication with th
 including fetching page content and updating page properties.
 """
 
+from pathlib import Path
 from typing import Any
 
 from notion_client import Client as NotionClient
@@ -334,3 +335,38 @@ class NotionService:
                 return property_name
 
         return None
+
+    def upload_file_to_page_property(self, page_id: str, property_name: str, file_path: Path) -> str | None:
+        """Store the local file path in a Notion page property (MVP: as text or URL).
+
+        Args:
+            page_id: The ID of the Notion page to update.
+            property_name: The name of the property to update (should be a text or URL property).
+            file_path: The Path to the file to "upload" (actually just storing the local path).
+
+        Returns:
+            The string value stored in Notion (the local file path), or None on failure.
+        """
+        from pathlib import Path
+
+        try:
+            file_path_str = str(file_path) if isinstance(file_path, str | Path) else file_path
+            # Try to update as URL property first, fallback to text/rich_text
+            # Fetch schema to determine property type
+            schema = self.get_database_schema()
+            prop_schema = schema.get(property_name, {})
+            prop_type = prop_schema.get("type", "rich_text")
+            if prop_type == "url":
+                value = {"url": file_path_str}
+            elif prop_type == "rich_text":
+                value = {"rich_text": [{"text": {"content": file_path_str}}]}  # type: ignore[dict-item]
+            elif prop_type == "title":
+                value = {"title": [{"text": {"content": file_path_str}}]}  # type: ignore[dict-item]
+            else:
+                # Default to rich_text
+                value = {"rich_text": [{"text": {"content": file_path_str}}]}  # type: ignore[dict-item]
+            self.update_page_property(page_id, property_name, value)
+            return file_path_str
+        except Exception:
+            # Log or handle error as needed
+            return None
