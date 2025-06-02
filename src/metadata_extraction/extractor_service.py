@@ -7,6 +7,7 @@ Notion database schemas.
 """
 
 import asyncio
+import uuid
 from enum import Enum
 from typing import Any
 
@@ -85,18 +86,24 @@ class ExtractorService:
         if not notion_database_schema:
             raise ExtractorServiceError("Notion database schema cannot be empty")
 
+        extracted_metadata = None
         try:
             if extraction_method == ExtractionMethod.OPENAI_WEB_SEARCH:
-                return self._extract_with_openai_web_search(job_url, notion_database_schema, model_name)
+                extracted_metadata = self._extract_with_openai_web_search(job_url, notion_database_schema, model_name)
             elif extraction_method == ExtractionMethod.CRAWL4AI_PLUS_GPT:
-                return self._extract_with_crawl4ai_plus_gpt(job_url, notion_database_schema, model_name)
+                extracted_metadata = self._extract_with_crawl4ai_plus_gpt(job_url, notion_database_schema, model_name)
             else:
                 raise ExtractorServiceError(f"Unsupported extraction method: {extraction_method}")
-
         except Exception as e:
             if isinstance(e, ExtractorServiceError):
                 raise
             raise ExtractorServiceError(f"Error during metadata extraction from URL: {str(e)}") from e
+
+        # --- Add job ID to extracted metadata ---
+        if extracted_metadata is not None:
+            if "ID" not in extracted_metadata or not extracted_metadata["ID"]:
+                extracted_metadata["ID"] = str(uuid.uuid4())
+        return extracted_metadata
 
     def _extract_with_openai_web_search(
         self, job_url: str, notion_database_schema: dict[str, Any], model_name: str

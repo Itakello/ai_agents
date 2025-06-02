@@ -10,6 +10,9 @@ from src.core.logger import logger
 from src.metadata_extraction.cache import URLCache
 from src.metadata_extraction.extractor_service import ExtractionMethod, ExtractorService
 from src.metadata_extraction.models import convert_openai_response_to_notion_update
+from src.resume_tailoring.latex_service import LatexService
+from src.resume_tailoring.pdf_compiler import PDFCompiler
+from src.resume_tailoring.tailor_service import TailorService
 
 
 def parse_arguments(default_model: str = "gpt-4o") -> argparse.Namespace:
@@ -37,6 +40,10 @@ Examples:
 
   # List cached URLs
   python src/main.py list-cache
+
+  # Tailor resume for a specific job
+  python src/main.py tailor-resume --job-id abc123 --output-stem company-role
+  python src/main.py tailor-resume --job-id abc123 --output-stem company-role --diff
         """,
     )
 
@@ -77,6 +84,11 @@ Examples:
 
     # List cache command
     subparsers.add_parser("list-cache", help="List all cached URLs")
+
+    # Tailor resume command
+    tailor_parser = subparsers.add_parser("tailor-resume", help="Tailor resume for a specific job")
+    tailor_parser.add_argument("--job-id", required=True, help="Job ID (matches the 'ID' property in Notion DB)")
+    tailor_parser.add_argument("--output-stem", required=True, help="Output filename stem for generated files")
 
     return parser.parse_args()
 
@@ -150,6 +162,10 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
     # Save to Notion database
     logger.info("Saving extracted metadata to Notion database...")
     try:
+        # Ensure the ID property is present in the update
+        if "ID" in extracted_metadata and extracted_metadata["ID"]:
+            if "ID" not in notion_update["properties"]:
+                notion_update["properties"]["ID"] = {"rich_text": [{"text": {"content": extracted_metadata["ID"]}}]}
         saved_page = notion_service.save_or_update_extracted_data(url=job_url, extracted_data=extracted_metadata)
         page_id = saved_page.get("id", "unknown")
         logger.success(f"Successfully saved/updated page in Notion database (ID: {page_id})")
@@ -183,6 +199,93 @@ def handle_export_pdf_command(args: argparse.Namespace) -> None:
         sys.exit(1)
     except Exception as e:
         logger.error(f"Error exporting PDF: {e}")
+        sys.exit(1)
+
+
+def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -> None:
+    """Handle the tailor-resume command to tailor resume for a specific job."""
+    # Initialize services
+    logger.info("Initializing services for resume tailoring...")
+    openai_client = OpenAIClient(api_key=settings.OPENAI_API_KEY)
+    notion_service = NotionService(api_key=settings.NOTION_API_KEY, database_id=settings.NOTION_DATABASE_ID)
+    pdf_compiler = PDFCompiler()
+    latex_service = LatexService(pdf_compiler=pdf_compiler, settings=settings)
+    tailor_service = TailorService(
+        openai_client=openai_client, latex_service=latex_service, notion_service=notion_service
+    )
+
+    # Get parameters
+    job_id = args.job_id
+    output_stem = args.output_stem
+    master_resume_path = Path(settings.MASTER_RESUME_PATH)
+
+    logger.info(f"Tailoring resume for Job ID: {job_id}")
+    logger.info(f"Using master resume: {master_resume_path}")
+    logger.info(f"Output stem: {output_stem}")
+    logger.info("Diff PDF will always be generated.")
+
+    try:
+        # Fetch job description and metadata from Notion page
+        logger.info("Fetching job information from Notion page...")
+        page_content = notion_service.get_page_content(settings.NOTION_DATABASE_ID)
+
+        # Extract job description (assuming it's in a "Job Description" property)
+        job_description_text = ""
+        if "properties" in page_content:
+            job_desc_prop = page_content["properties"].get("Job Description", {})
+            if job_desc_prop.get("type") == "rich_text":
+                job_description_text = "".join(
+                    [text.get("plain_text", "") for text in job_desc_prop.get("rich_text", [])]
+                )
+
+        # Create job metadata from page properties (simplified for MVP)
+        job_metadata = {}
+        if "properties" in page_content:
+            for prop_name, prop_value in page_content["properties"].items():
+                if prop_value.get("type") == "title":
+                    title_texts = prop_value.get("title", [])
+                    if title_texts:
+                        job_metadata[prop_name] = "".join([t.get("plain_text", "") for t in title_texts])
+                elif prop_value.get("type") == "rich_text":
+                    rich_texts = prop_value.get("rich_text", [])
+                    if rich_texts:
+                        job_metadata[prop_name] = "".join([t.get("plain_text", "") for t in rich_texts])
+                elif prop_value.get("type") == "select":
+                    select_value = prop_value.get("select")
+                    if select_value:
+                        job_metadata[prop_name] = select_value.get("name", "")
+                elif prop_value.get("type") == "url":
+                    url_value = prop_value.get("url")
+                    if url_value:
+                        job_metadata[prop_name] = url_value
+
+        if not job_description_text:
+            logger.error("No job description found in the Notion page")
+            sys.exit(1)
+
+        # Read master resume content
+        logger.info("Reading master resume content...")
+        if not master_resume_path.exists():
+            logger.error(f"Master resume file not found: {master_resume_path}")
+            sys.exit(1)
+
+        master_resume_content = master_resume_path.read_text(encoding="utf-8")
+
+        # Call tailor service
+        logger.info("Tailoring resume...")
+        tailor_service.tailor_resume(
+            job_metadata=job_metadata,
+            master_resume_tex_content=master_resume_content,
+            notion_page_id=settings.NOTION_DATABASE_ID,
+            output_filename_stem=output_stem,
+        )
+
+        logger.success("Resume tailoring completed successfully!")
+        logger.info(f"Tailored resume saved with stem: {output_stem}")
+        logger.info(f"Diff PDF generated with stem: {output_stem}")
+
+    except Exception as e:
+        logger.error(f"Error during resume tailoring: {str(e)}")
         sys.exit(1)
 
 
@@ -224,6 +327,8 @@ def main() -> None:
             handle_export_pdf_command(args)
         elif args.command == "list-cache":
             handle_list_cache_command()
+        elif args.command == "tailor-resume":
+            handle_tailor_resume_command(args, settings)
         else:
             print("Error: No command specified. Use --help for usage information.")
             sys.exit(1)
