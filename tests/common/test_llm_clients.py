@@ -12,18 +12,8 @@ from src.common.llm_clients import OpenAIClient
 class TestOpenAIClient:
     """Test suite for the OpenAIClient class."""
 
-    @pytest.fixture(autouse=True)
-    def patch_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Automatically patch required environment variables for all tests."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
-        monkeypatch.setenv("NOTION_API_KEY", "test-notion-key")
-        monkeypatch.setenv("NOTION_DATABASE_ID", "test-database-id")
-        monkeypatch.setenv("MASTER_RESUME_PATH", "test_resume.tex")
-
-    """Test suite for the OpenAIClient class."""
-
     @pytest.fixture
-    def mock_openai_client(self) -> Generator[MagicMock]:
+    def mock_client(self) -> Generator[MagicMock]:
         """Create a mock OpenAI client with realistic response structure from API docs."""
         with patch("openai.OpenAI") as mock_client:
             # Real OpenAI Responses API structure
@@ -43,19 +33,19 @@ class TestOpenAIClient:
             mock_client.return_value.responses.create.return_value = mock_response
             yield mock_client
 
-    def test_init_sets_up_client(self, mock_openai_client: MagicMock) -> None:
+    def test_init_sets_up_client(self, mock_client: MagicMock) -> None:
         """Test that the OpenAI client is initialized with the correct API key."""
         # Arrange
         api_key = "test-api-key"
 
         # Act
-        client = OpenAIClient(api_key=api_key)
+        client = OpenAIClient(api_key=api_key, temperature=0.7)
 
         # Assert
-        mock_openai_client.assert_called_once_with(api_key=api_key)
+        mock_client.assert_called_once_with(api_key=api_key)
         assert client.response_id is None
 
-    def test_get_response_calls_api_correctly(self, mock_openai_client: MagicMock) -> None:
+    def test_get_response_calls_api_correctly(self, mock_client: MagicMock) -> None:
         """Test that get_chat_completion calls the Responses API correctly."""
         # Arrange
         api_key = "test-api-key"
@@ -63,10 +53,10 @@ class TestOpenAIClient:
         model_name = "gpt-4"
 
         # Get the mock responses client
-        mock_responses = mock_openai_client.return_value.responses
+        mock_responses = mock_client.return_value.responses
 
         # Act
-        client = OpenAIClient(api_key=api_key)
+        client = OpenAIClient(api_key=api_key, temperature=0.7)
         response = client.get_response(sys_prompt=None, user_prompt=prompt, model_name=model_name)
 
         # Assert
@@ -81,20 +71,20 @@ class TestOpenAIClient:
         assert response == "Test response"
         assert client.response_id == "resp_test123"  # Should be set after first call
 
-    def test_get_response_raises_if_both_prompts_none(self, mock_openai_client: MagicMock) -> None:
+    def test_get_response_raises_if_both_prompts_none(self, mock_client: MagicMock) -> None:
         """Test that get_response raises ValueError if both sys_prompt and user_prompt are None."""
-        client = OpenAIClient(api_key="test-api-key")
+        client = OpenAIClient(api_key="test-api-key", temperature=0.7)
         with pytest.raises(ValueError, match="At least one of sys_prompt or user_prompt must be provided"):
             client.get_response(sys_prompt=None, user_prompt=None, model_name="gpt-4")
 
-    def test_get_structured_response_raises_if_both_prompts_none(self, mock_openai_client: MagicMock) -> None:
+    def test_get_structured_response_raises_if_both_prompts_none(self, mock_client: MagicMock) -> None:
         """Test that get_structured_response raises ValueError if both sys_prompt and user_prompt are None."""
-        client = OpenAIClient(api_key="test-api-key")
+        client = OpenAIClient(api_key="test-api-key", temperature=0.7)
         schema = {"type": "object", "properties": {"foo": {"type": "string"}}, "required": ["foo"]}
         with pytest.raises(ValueError, match="At least one of sys_prompt or user_prompt must be provided"):
             client.get_structured_response(sys_prompt=None, user_prompt=None, model_name="gpt-4", schema=schema)
 
-    def test_get_chat_completion_handles_empty_response(self, mock_openai_client: MagicMock) -> None:
+    def test_get_chat_completion_handles_empty_response(self, mock_client: MagicMock) -> None:
         """Test that get_chat_completion handles empty responses gracefully."""
         # Arrange
         api_key = "test-api-key"
@@ -103,31 +93,31 @@ class TestOpenAIClient:
         # Create a response with empty output
         empty_response = type("Response", (), {"id": "resp_empty", "error": None, "output_text": ""})()
 
-        mock_openai_client.return_value.responses.create.return_value = empty_response
+        mock_client.return_value.responses.create.return_value = empty_response
 
         # Act
-        client = OpenAIClient(api_key=api_key)
+        client = OpenAIClient(api_key=api_key, temperature=0.7)
         response = client.get_response(sys_prompt=None, user_prompt=prompt, model_name="gpt-4o")
 
         # Assert
         assert response == ""
 
-    def test_get_chat_completion_uses_default_model(self, mock_openai_client: MagicMock) -> None:
+    def test_get_chat_completion_uses_default_model(self, mock_client: MagicMock) -> None:
         """Test that get_chat_completion uses the default model when none is specified."""
         # Arrange
         api_key = "test-api-key"
         prompt = "Test prompt"
 
         # Act
-        client = OpenAIClient(api_key=api_key)
+        client = OpenAIClient(api_key=api_key, temperature=0.7)
 
         client.get_response(sys_prompt=None, user_prompt=prompt, model_name="gpt-4o")
 
         # Assert
-        call_args = mock_openai_client.return_value.responses.create.call_args[1]
+        call_args = mock_client.return_value.responses.create.call_args[1]
         assert call_args["model"] == "gpt-4o"
 
-    def test_get_chat_completion_handles_api_errors(self, mock_openai_client: MagicMock) -> None:
+    def test_get_chat_completion_handles_api_errors(self, mock_client: MagicMock) -> None:
         """Test that get_chat_completion properly handles API errors."""
         # Test 1: API returns an error object
         error_response = type(
@@ -139,9 +129,9 @@ class TestOpenAIClient:
             },
         )()
 
-        mock_openai_client.return_value.responses.create.return_value = error_response
+        mock_client.return_value.responses.create.return_value = error_response
 
-        client = OpenAIClient(api_key="test-api-key")
+        client = OpenAIClient(api_key="test-api-key", temperature=0.7)
 
         with pytest.raises(ValueError) as exc_info:
             client.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
@@ -149,7 +139,7 @@ class TestOpenAIClient:
         assert "API Error: Test error message (code: test_error_code)" in str(exc_info.value)
 
         # Test 2: Exception during API call
-        mock_openai_client.return_value.responses.create.side_effect = Exception("Connection error")
+        mock_client.return_value.responses.create.side_effect = Exception("Connection error")
 
         with pytest.raises(ValueError) as exc_info:
             client.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
