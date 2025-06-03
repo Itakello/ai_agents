@@ -7,7 +7,10 @@ Notion database schemas.
 """
 
 import asyncio
+import os
+import tempfile
 import uuid
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -125,9 +128,6 @@ class ExtractorService:
 
             markdown_content = asyncio.run(crawl_url_async(job_url))
             # Save markdown content to Notion DB file property
-            import os
-            import tempfile
-            from pathlib import Path
 
             if not page_id:
                 # If page does not exist, create it with at least the URL and file property

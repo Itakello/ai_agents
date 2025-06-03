@@ -28,9 +28,6 @@ repos:
         language: system
         types: [python]
         args: ["--config-file=pyproject.toml"]
-
--   repo: local
-    hooks:
     -   id: pytest-fast
         name: pytest-fast
         entry: pytest
