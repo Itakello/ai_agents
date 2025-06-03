@@ -44,7 +44,12 @@ class OpenAIClient:
 
         Returns:
             A list of message dictionaries formatted for the OpenAI API.
+
+        Raises:
+            ValueError: If both sys_prompt and user_prompt are None.
         """
+        if sys_prompt is None and user_prompt is None:
+            raise ValueError("At least one of sys_prompt or user_prompt must be provided (not both None).")
         messages: list[ResponseInputItemParam] = []
         if sys_prompt:
             messages.append({"role": "system", "content": sys_prompt})
@@ -64,6 +69,7 @@ class OpenAIClient:
             The model's response as a string.
 
         Raises:
+            ValueError: If both sys_prompt and user_prompt are None.
             openai.APIError: If there's an error communicating with the OpenAI API.
         """
 
@@ -119,6 +125,7 @@ class OpenAIClient:
             Structured data extracted from the model's response.
 
         Raises:
+            ValueError: If both sys_prompt and user_prompt are None.
             ValueError: If there's an error with the API call or response parsing.
         """
 

@@ -81,6 +81,19 @@ class TestOpenAIClient:
         assert response == "Test response"
         assert client.response_id == "resp_test123"  # Should be set after first call
 
+    def test_get_response_raises_if_both_prompts_none(self, mock_openai_client: MagicMock) -> None:
+        """Test that get_response raises ValueError if both sys_prompt and user_prompt are None."""
+        client = OpenAIClient(api_key="test-api-key")
+        with pytest.raises(ValueError, match="At least one of sys_prompt or user_prompt must be provided"):
+            client.get_response(sys_prompt=None, user_prompt=None, model_name="gpt-4")
+
+    def test_get_structured_response_raises_if_both_prompts_none(self, mock_openai_client: MagicMock) -> None:
+        """Test that get_structured_response raises ValueError if both sys_prompt and user_prompt are None."""
+        client = OpenAIClient(api_key="test-api-key")
+        schema = {"type": "object", "properties": {"foo": {"type": "string"}}, "required": ["foo"]}
+        with pytest.raises(ValueError, match="At least one of sys_prompt or user_prompt must be provided"):
+            client.get_structured_response(sys_prompt=None, user_prompt=None, model_name="gpt-4", schema=schema)
+
     def test_get_chat_completion_handles_empty_response(self, mock_openai_client: MagicMock) -> None:
         """Test that get_chat_completion handles empty responses gracefully."""
         # Arrange
