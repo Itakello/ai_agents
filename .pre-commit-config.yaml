@@ -10,7 +10,6 @@ repos:
     -   id: check-merge-conflict
     -   id: check-added-large-files
     -   id: debug-statements
-    -   id: name-tests-test
 
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.10
