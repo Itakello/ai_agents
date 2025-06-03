@@ -54,7 +54,6 @@ class Settings(BaseSettings):
     OPENAI_TIMEOUT_SECONDS: int = 30
 
     # Default CLI settings
-    DEFAULT_EXTRACTION_METHOD: str = "crawl4ai_plus_gpt"
     DEFAULT_EXPORT_PDF_DIR: str = "exported_pdfs"
 
     # Crawl4AI settings
@@ -83,8 +82,7 @@ class Settings(BaseSettings):
 
     # File paths and directories
     PROMPTS_DIRECTORY: Path = Path("prompts")
-    METADATA_EXTRACTION_PROMPT_FILE: str = "sys_prompt_extract_metadata.txt"
-    CRAWL4AI_PROMPT_FILE: str = "crawl4ai_plus_gpt_prompt.txt"
+    EXTRACT_METADATA: str = "extract_metadata.txt"
     TEMP_DIRECTORY: Path = Path("tmp")
 
     # Performance and reliability settings
@@ -130,15 +128,6 @@ class Settings(BaseSettings):
         """Validate temperature is between 0 and 2."""
         if not 0 <= v <= 2:
             raise ValueError("Temperature must be between 0 and 2")
-        return v
-
-    @field_validator("DEFAULT_EXTRACTION_METHOD")
-    @classmethod
-    def validate_extraction_method(cls, v: str) -> str:
-        """Validate extraction method is supported."""
-        valid_methods = {"openai_web_search", "crawl4ai_plus_gpt"}
-        if v not in valid_methods:
-            raise ValueError(f"Extraction method must be one of: {', '.join(valid_methods)}")
         return v
 
 

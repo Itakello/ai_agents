@@ -76,7 +76,7 @@ class ExtractorService:
             raise ExtractorServiceError("Notion database schema cannot be empty")
 
         try:
-            extracted_metadata = self._extract_with_crawl4ai_plus_gpt(job_url, notion_database_schema, model_name)
+            extracted_metadata = self._extract_metadata_with_crawl4ai(job_url, notion_database_schema, model_name)
         except Exception as e:
             if isinstance(e, ExtractorServiceError):
                 raise
@@ -88,7 +88,7 @@ class ExtractorService:
                 extracted_metadata["ID"] = str(uuid.uuid4())
         return extracted_metadata
 
-    def _extract_with_crawl4ai_plus_gpt(
+    def _extract_metadata_with_crawl4ai(
         self, job_url: str, notion_database_schema: dict[str, Any], model_name: str
     ) -> dict[str, Any]:
         """Extract metadata using Crawl4AI for crawling + GPT for extraction."""
@@ -151,7 +151,7 @@ class ExtractorService:
 
         # Load and build prompt from template using configured paths
         settings = get_settings()
-        prompt_path = settings.PROMPTS_DIRECTORY / settings.CRAWL4AI_PROMPT_FILE
+        prompt_path = settings.PROMPTS_DIRECTORY / settings.EXTRACT_METADATA
         prompt_template = read_file_content(prompt_path)
         prompt = replace_prompt_placeholders(prompt_template, CONTENT=markdown_content)
 
