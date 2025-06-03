@@ -71,5 +71,5 @@ Thumbs.db
 # DB
 *.cache
 
-# Exported files
-exported_pdfs/
+# Output files
+outputs/
