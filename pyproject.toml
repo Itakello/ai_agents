@@ -2,6 +2,7 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
 name = "python_project_template"
 version = "0.1.0"
@@ -127,8 +128,9 @@ exclude = [
 addopts = "-ra -q --cov=src --cov-report=term-missing --mypy"
 testpaths = [
     "tests",
+    "tests/common",
 ]
-python_files = "*_test.py"
+python_files = ["test_*.py"]
 python_classes = "Test*"
 python_functions = "test_*"
 # Filter out warnings that are common but not always actionable
