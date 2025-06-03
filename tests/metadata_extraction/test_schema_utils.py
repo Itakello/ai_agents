@@ -3,7 +3,7 @@
 from typing import Any
 from unittest.mock import patch
 
-from src.metadata_extraction.models import (
+from src.metadata_extraction.schema_utils import (
     _generate_example_description,
     _should_exclude_property,
     _should_keep_options,
@@ -50,7 +50,7 @@ class TestHelperFunctions:
         assert not _should_keep_options("normal description")
         assert not _should_keep_options("description with #other-directive")
 
-    @patch("src.metadata_extraction.models.random.sample")
+    @patch("src.metadata_extraction.schema_utils.random.sample")
     def test_generate_example_description_with_options(self, mock_sample: Any) -> None:
         """Test example description generation with options."""
         options = [
@@ -414,7 +414,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
         }
         assert result == expected
 
-    @patch("src.metadata_extraction.models.random.sample")
+    @patch("src.metadata_extraction.schema_utils.random.sample")
     def test_create_schema_example_generation(self, mock_sample: Any) -> None:
         """Test that examples are generated for select properties when options not included."""
         mock_sample.return_value = [{"name": "Junior", "id": "1"}, {"name": "Senior", "id": "2"}]
@@ -437,7 +437,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
         assert "description" in result["properties"]["experience_level"]
         assert "e.g. Junior, Senior, ..." in result["properties"]["experience_level"]["description"]
 
-    @patch("src.metadata_extraction.models.random.sample")
+    @patch("src.metadata_extraction.schema_utils.random.sample")
     def test_create_schema_preserve_original_description_with_examples(self, mock_sample: Any) -> None:
         """Test that original descriptions are preserved when adding examples."""
         mock_sample.return_value = [{"name": "Low", "id": "1"}, {"name": "High", "id": "2"}]

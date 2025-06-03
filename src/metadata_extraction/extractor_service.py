@@ -19,7 +19,7 @@ from ..common.llm_clients import OpenAIClient
 from ..common.notion_service import NotionService
 from ..common.utils import read_file_content, replace_prompt_placeholders
 from ..core.config import get_settings
-from .models import create_openai_schema_from_notion_database
+from .schema_utils import create_openai_schema_from_notion_database
 
 
 class ExtractorServiceError(Exception):

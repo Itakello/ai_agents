@@ -1,22 +1,5 @@
-"""Schema and data conversion utilities for OpenAI and Notion integration.
-
-This module provides functions to convert between Notion property schemas and OpenAI JSON schemas,
-as well as converting data between the two formats.
-
-Special description directives:
-- #exclude: Skip this property in schema generation
-- #keep-options: Always include enum options for select/multi_select/status properties
-- Custom descriptions are preserved and used in the generated schema
-"""
-
 import random
-from enum import Enum
 from typing import Any
-
-
-class ExtractionMethod(Enum):
-    OPENAI_WEB_SEARCH = "openai_web_search"
-    CRAWL4AI_PLUS_GPT = "crawl4ai_plus_gpt"
 
 
 def notion_property_to_openai_schema(notion_property: dict[str, Any], add_options: bool) -> dict[str, Any]:
@@ -106,8 +89,12 @@ def openai_data_to_notion_property(value: Any, property_type: str) -> dict[str, 
             return {"status": {"name": str(value)}} if value else {}
         case "multi_select":
             if isinstance(value, list):
-                return {"multi_select": [{"name": str(item)} for item in value if item]}
-            return {}
+                filtered = [v for v in value if v not in (None, "")]
+                if not filtered:
+                    return {}
+                return {"multi_select": [{"name": str(v)} for v in filtered]}
+            else:
+                return {}
         case "date":
             return {"date": {"start": str(value)}} if value else {}
         case "email":
@@ -117,19 +104,23 @@ def openai_data_to_notion_property(value: Any, property_type: str) -> dict[str, 
         case "url":
             return {"url": str(value)} if value else {}
         case "people":
-            # For people, we need user objects, but for simplicity return empty
-            # In practice, you'd need to resolve names to Notion user IDs
+            # Always return empty dict for people (complex type, not handled)
             return {}
         case "files":
             if isinstance(value, list) and value:
                 return {
                     "files": [
-                        {"type": "external", "name": str(url).split("/")[-1], "external": {"url": str(url)}}
+                        {
+                            "type": "external",
+                            "name": str(url).split("/")[-1],
+                            "external": {"url": str(url)},
+                        }
                         for url in value
                         if url
                     ]
                 }
-            return {}
+            else:
+                return {}
         case _:
             # Default to rich_text for unknown types
             return {"rich_text": [{"text": {"content": str(value)}}]}

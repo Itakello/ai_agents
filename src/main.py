@@ -8,7 +8,7 @@ from src.common.notion_service import NotionService
 from src.core.config import Settings
 from src.core.logger import logger
 from src.metadata_extraction.extractor_service import ExtractorService
-from src.metadata_extraction.models import convert_openai_response_to_notion_update
+from src.metadata_extraction.schema_utils import convert_openai_response_to_notion_update
 from src.resume_tailoring.latex_service import LatexService
 from src.resume_tailoring.pdf_compiler import PDFCompiler
 from src.resume_tailoring.tailor_service import TailorService
