@@ -10,6 +10,7 @@ import asyncio
 import uuid
 from typing import Any
 
+import requests
 from crawl4ai import AsyncWebCrawler  # type: ignore
 from crawl4ai.async_configs import BrowserConfig, CacheMode, CrawlerRunConfig  # type: ignore
 from crawl4ai.models import CrawlResultContainer  # type: ignore
@@ -18,7 +19,6 @@ from ..common.llm_clients import OpenAIClient
 from ..common.notion_service import NotionService
 from ..common.utils import read_file_content, replace_prompt_placeholders
 from ..core.config import get_settings
-from .cache import JobCache
 from .models import create_openai_schema_from_notion_database
 
 
@@ -48,7 +48,6 @@ class ExtractorService:
         self.openai_client = openai_client
         self.notion_service = notion_service
         self.add_properties_options = add_properties_options
-        self.url_cache = JobCache()
 
     def extract_metadata_from_job_url(
         self,
@@ -94,32 +93,58 @@ class ExtractorService:
     ) -> dict[str, Any]:
         """Extract metadata using Crawl4AI for crawling + GPT for extraction."""
 
-        # Check cache first
-        cached_content = self.url_cache.get_cached_content(job_url)
-        if cached_content:
-            markdown_content = cached_content
-        else:
+        # Try to get markdown content from Notion DB property 'Job Description Markdown'
+        notion_page = self.notion_service.find_page_by_url(job_url)
+        markdown_content = None
+        page_id = None
+        if notion_page:
+            page_id = notion_page.get("id")
+            properties = notion_page.get("properties", {})
+            jd_markdown_prop = properties.get("Job Description Markdown")
+            if jd_markdown_prop:
+                # Notion file property format
+                files = jd_markdown_prop.get("files", [])
+                if files and isinstance(files, list):
+                    file_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+                    if file_url:
+                        resp = requests.get(file_url)
+                        if resp.ok:
+                            markdown_content = resp.text
+        if not markdown_content:
             # Crawl the URL to get markdown content using async crawler
             async def crawl_url_async(url: str) -> str:
-                # Create configurations using the helper methods
                 browser_config = self._create_browser_config()
                 run_config = self._create_run_config()
-
                 async with AsyncWebCrawler(config=browser_config) as crawler:
                     result = await crawler.arun(url=url, config=run_config)
                     if not isinstance(result, CrawlResultContainer):
                         raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
-                    # Handle the result properly by accessing its attributes with type: ignore
                     if not result.success:
                         raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
-
                     return str(result.markdown)
 
-            # Run the async crawler
             markdown_content = asyncio.run(crawl_url_async(job_url))
+            # Save markdown content to Notion DB file property
+            import os
+            import tempfile
+            from pathlib import Path
 
-            # Cache the crawled content
-            self.url_cache.cache_content(job_url, markdown_content)
+            if not page_id:
+                # If page does not exist, create it with at least the URL and file property
+                schema = self.notion_service.get_database_schema()
+                url_prop = self.notion_service._find_url_property_name(schema)
+                properties = {
+                    (url_prop or "URL"): {"url": job_url},
+                    "Job Description Markdown": {"files": []},
+                }
+                page = self.notion_service.create_page(properties)
+                page_id = str(page.get("id"))
+            # Write markdown to temp file and upload
+            with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as tmp_md:
+                tmp_md.write(markdown_content)
+                tmp_md_path = Path(tmp_md.name)
+            self.notion_service.upload_file_to_page_property(page_id, "Job Description Markdown", tmp_md_path)
+            os.remove(tmp_md_path)
 
         # Convert Notion schema to OpenAI JSON Schema format
         openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)

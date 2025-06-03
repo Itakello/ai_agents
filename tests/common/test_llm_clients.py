@@ -12,6 +12,16 @@ from src.common.llm_clients import OpenAIClient
 class TestOpenAIClient:
     """Test suite for the OpenAIClient class."""
 
+    @pytest.fixture(autouse=True)
+    def patch_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Automatically patch required environment variables for all tests."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+        monkeypatch.setenv("NOTION_API_KEY", "test-notion-key")
+        monkeypatch.setenv("NOTION_DATABASE_ID", "test-database-id")
+        monkeypatch.setenv("MASTER_RESUME_PATH", "test_resume.tex")
+
+    """Test suite for the OpenAIClient class."""
+
     @pytest.fixture
     def mock_openai_client(self) -> Generator[MagicMock]:
         """Create a mock OpenAI client with realistic response structure from API docs."""
