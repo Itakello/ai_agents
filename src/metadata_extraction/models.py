@@ -10,7 +10,13 @@ Special description directives:
 """
 
 import random
+from enum import Enum
 from typing import Any
+
+
+class ExtractionMethod(Enum):
+    OPENAI_WEB_SEARCH = "openai_web_search"
+    CRAWL4AI_PLUS_GPT = "crawl4ai_plus_gpt"
 
 
 def notion_property_to_openai_schema(notion_property: dict[str, Any], add_options: bool) -> dict[str, Any]:

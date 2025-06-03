@@ -237,8 +237,6 @@ ai_agents/
 python src/main.py
 ```
 
-(Add more specific run instructions as the application develops, e.g., command-line arguments if any)
-
 ## Running Tests
 
 ```bash

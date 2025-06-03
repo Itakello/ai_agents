@@ -8,7 +8,6 @@ Notion database schemas.
 
 import asyncio
 import uuid
-from enum import Enum
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler  # type: ignore
@@ -21,13 +20,6 @@ from ..common.utils import read_file_content, replace_prompt_placeholders
 from ..core.config import get_settings
 from .cache import JobCache
 from .models import create_openai_schema_from_notion_database
-
-
-class ExtractionMethod(Enum):
-    """Available extraction methods."""
-
-    OPENAI_WEB_SEARCH = "openai_web_search"
-    CRAWL4AI_PLUS_GPT = "crawl4ai_plus_gpt"
 
 
 class ExtractorServiceError(Exception):
@@ -63,22 +55,20 @@ class ExtractorService:
         job_url: str,
         notion_database_schema: dict[str, Any],
         model_name: str,
-        extraction_method: ExtractionMethod = ExtractionMethod.OPENAI_WEB_SEARCH,
     ) -> dict[str, Any]:
-        """Extract structured metadata from a job posting URL.
+        """Extract structured metadata from a job posting URL using crawl4ai + OpenAI.
 
         Args:
             job_url: The URL of the job posting to analyze.
             notion_database_schema: The Notion database properties schema for structuring the output.
             model_name: The name of the OpenAI model to use.
-            extraction_method: The extraction method to use.
 
         Returns:
             A dictionary containing the extracted metadata in a format compatible with OpenAI's
             structured output, ready for conversion to Notion format.
 
         Raises:
-            ExtractorServiceError: If there's an error during the extraction process.
+            ExtractorServiceError: If there's an error during the   process.
         """
         if not job_url.strip():
             raise ExtractorServiceError("Job URL cannot be empty")
@@ -86,14 +76,8 @@ class ExtractorService:
         if not notion_database_schema:
             raise ExtractorServiceError("Notion database schema cannot be empty")
 
-        extracted_metadata = None
         try:
-            if extraction_method == ExtractionMethod.OPENAI_WEB_SEARCH:
-                extracted_metadata = self._extract_with_openai_web_search(job_url, notion_database_schema, model_name)
-            elif extraction_method == ExtractionMethod.CRAWL4AI_PLUS_GPT:
-                extracted_metadata = self._extract_with_crawl4ai_plus_gpt(job_url, notion_database_schema, model_name)
-            else:
-                raise ExtractorServiceError(f"Unsupported extraction method: {extraction_method}")
+            extracted_metadata = self._extract_with_crawl4ai_plus_gpt(job_url, notion_database_schema, model_name)
         except Exception as e:
             if isinstance(e, ExtractorServiceError):
                 raise
@@ -104,27 +88,6 @@ class ExtractorService:
             if "ID" not in extracted_metadata or not extracted_metadata["ID"]:
                 extracted_metadata["ID"] = str(uuid.uuid4())
         return extracted_metadata
-
-    def _extract_with_openai_web_search(
-        self, job_url: str, notion_database_schema: dict[str, Any], model_name: str
-    ) -> dict[str, Any]:
-        """Extract metadata using OpenAI's web search capabilities."""
-        # Convert Notion schema to OpenAI JSON Schema format
-        openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
-
-        # Load the prompt from file using configured paths
-        settings = get_settings()
-        prompt_path = settings.PROMPTS_DIRECTORY / settings.METADATA_EXTRACTION_PROMPT_FILE
-        sys_prompt_template = read_file_content(prompt_path)
-        sys_prompt = replace_prompt_placeholders(sys_prompt_template, URL=job_url)
-
-        return self.openai_client.get_structured_response(
-            sys_prompt=sys_prompt,
-            user_prompt=None,
-            model_name=model_name,
-            schema=openai_schema,
-            use_web_search=True,
-        )
 
     def _extract_with_crawl4ai_plus_gpt(
         self, job_url: str, notion_database_schema: dict[str, Any], model_name: str
@@ -169,8 +132,8 @@ class ExtractorService:
 
         # Use OpenAI for structured extraction
         return self.openai_client.get_structured_response(
-            sys_prompt=None,
-            user_prompt=prompt,
+            sys_prompt=prompt,
+            user_prompt=None,
             model_name=model_name,
             schema=openai_schema,
             use_web_search=False,

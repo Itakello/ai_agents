@@ -125,12 +125,11 @@ class NotionService:
         except Exception as e:
             raise NotionAPIError(f"Failed to update properties on page {page_id}: {str(e)}") from e
 
-    def find_page_by_url(self, url: str, url_property_name: str | None = None) -> dict[str, Any] | None:
-        """Find a page in the database by URL.
+    def find_page_by_job_id(self, job_id: str) -> dict[str, Any] | None:
+        """Find a page in the database by its job ID.
 
         Args:
-            url: The URL to search for.
-            url_property_name: The name of the URL property in the database. If None, will auto-detect from schema.
+            job_id: The job ID to search for.
 
         Returns:
             The page data if found, None otherwise.
@@ -139,18 +138,38 @@ class NotionService:
             NotionAPIError: If there's an error querying the database.
         """
         try:
-            # Auto-detect URL property name if not provided
-            if url_property_name is None:
-                database_schema = self.get_database_schema()
-                url_property_name = self._find_url_property_name(database_schema)
-                if url_property_name is None:
-                    raise NotionAPIError(
-                        "No URL property found in database schema. Cannot search for existing pages by URL."
-                    )
-
             result = self.client.databases.query(
                 database_id=self.database_id,
-                filter={"property": url_property_name, "url": {"equals": url}},
+                filter={"property": "ID", "rich_text": {"equals": job_id}},
+            )
+            if isinstance(result, dict) and "results" in result and result["results"]:
+                first_result = result["results"][0]
+                return first_result if isinstance(first_result, dict) else None
+            return None
+        except Exception as e:
+            raise NotionAPIError(f"Failed to search for page with job ID {job_id}: {str(e)}") from e
+
+    def find_page_by_url(self, url: str, url_property_name: str | None = None) -> dict[str, Any] | None:
+        """
+        Find a page in the database by its URL property.
+
+        Args:
+            url: The job URL to search for.
+            url_property_name: The property name for the URL in the database. If None, auto-detects from schema.
+
+        Returns:
+            The page data if found, None otherwise.
+        Raises:
+            NotionAPIError: If there's an error querying the database.
+        """
+        try:
+            schema = self.get_database_schema()
+            url_property = url_property_name or self._find_url_property_name(schema)
+            if not url_property:
+                raise NotionAPIError("Could not determine URL property name in Notion database schema.")
+            result = self.client.databases.query(
+                database_id=self.database_id,
+                filter={"property": url_property, "url": {"equals": url}},
             )
             if isinstance(result, dict) and "results" in result and result["results"]:
                 first_result = result["results"][0]
@@ -182,45 +201,38 @@ class NotionService:
     def save_or_update_extracted_data(
         self, url: str, extracted_data: dict[str, Any], url_property_name: str | None = None
     ) -> dict[str, Any]:
-        """Save extracted data to Notion database, updating existing page if URL already exists.
+        """
+        Save extracted data to Notion database, updating existing page if URL already exists.
+        Always stores markdown content as a rich_text property.
 
         Args:
             url: The URL that was processed.
-            extracted_data: The structured data extracted from the URL.
+            extracted_data: The structured data extracted from the URL. Should include markdown content.
             url_property_name: The name of the URL property in the database. If None, will auto-detect from schema.
 
         Returns:
             The page data (either updated or newly created).
-
         Raises:
             NotionAPIError: If there's an error saving or updating the data.
         """
         try:
-            # Get database schema to understand property types
             database_schema = self.get_database_schema()
-
-            # Auto-detect URL property name if not provided
-            if url_property_name is None:
-                url_property_name = self._find_url_property_name(database_schema)
-                if url_property_name is None:
-                    raise NotionAPIError(
-                        "No URL property found in database schema. Please ensure your Notion database has a URL property or specify the property name explicitly."
-                    )
-
+            url_property = url_property_name or self._find_url_property_name(database_schema)
+            if not url_property:
+                raise NotionAPIError("Could not determine URL property name in Notion database schema.")
+            # Ensure markdown is present and stored as a rich_text property
+            if "Job Description Markdown" in extracted_data:
+                markdown_val = extracted_data["Job Description Markdown"]
+                extracted_data["Job Description Markdown"] = markdown_val or ""
             # Check if page with this URL already exists
-            existing_page = self.find_page_by_url(url, url_property_name)
-
+            existing_page = self.find_page_by_url(url, url_property)
             # Prepare properties for Notion API format
-            properties = self._format_properties_for_notion(extracted_data, url, url_property_name, database_schema)
-
+            properties = self._format_properties_for_notion(extracted_data, url, url_property, database_schema)
             if existing_page:
-                # Update existing page
                 page_id = existing_page["id"]
                 return self.update_page_properties(page_id, properties)
             else:
-                # Create new page
                 return self.create_page(properties)
-
         except Exception as e:
             raise NotionAPIError(f"Failed to save or update data for URL {url}: {str(e)}") from e
 

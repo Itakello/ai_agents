@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.main import display_results, main, parse_arguments
-from src.metadata_extraction.extractor_service import ExtractionMethod
 
 DUMMY_SETTINGS = dict(
     OPENAI_API_KEY="sk-test",
@@ -26,7 +25,6 @@ class TestParseArguments:
         assert args.command == "extract"
         assert args.job_url == "https://example.com/job"
         assert args.model == "gpt-4-test"
-        assert args.method == "crawl4ai_plus_gpt"
 
     @patch("sys.argv", ["main.py", "extract", "https://example.com/job", "--model", "gpt-3.5-turbo"])
     def test_parse_arguments_with_custom_model(self) -> None:
@@ -35,16 +33,8 @@ class TestParseArguments:
         assert args.command == "extract"
         assert args.job_url == "https://example.com/job"
         assert args.model == "gpt-3.5-turbo"
-        assert args.method == "crawl4ai_plus_gpt"
 
-    @patch("sys.argv", ["main.py", "extract", "https://example.com/job", "--method", "openai_web_search"])
-    def test_parse_arguments_with_custom_method(self) -> None:
-        """Test parsing arguments with custom extraction method."""
-        args = parse_arguments(default_model="gpt-4-test")
-        assert args.command == "extract"
-        assert args.job_url == "https://example.com/job"
-        assert args.model == "gpt-4-test"
-        assert args.method == "openai_web_search"
+    # The CLI does not support --method, so this test is removed.
 
     @patch("sys.argv", ["main.py"])
     def test_parse_arguments_missing_url(self) -> None:
@@ -129,15 +119,12 @@ class TestMain:
 
         mock_notion_service_instance.get_database_schema.assert_called_once()
         mock_extractor_service_instance.extract_metadata_from_job_url.assert_called_once_with(
-            job_url="https://example.com/job",
-            notion_database_schema=mock_database_schema,
-            model_name="gpt-4o",
-            extraction_method=ExtractionMethod.OPENAI_WEB_SEARCH,
+            "https://example.com/job",
+            mock_database_schema,
+            "gpt-4o",
         )
         mock_convert.assert_called_once_with(mock_extracted_metadata, mock_database_schema)
-        mock_display_results.assert_called_once_with(
-            mock_extracted_metadata, mock_notion_update, ExtractionMethod.OPENAI_WEB_SEARCH
-        )
+        mock_display_results.assert_called_once_with(mock_extracted_metadata, mock_notion_update)
 
     @patch("src.main.Settings", autospec=True)
     @patch("src.main.parse_arguments")
@@ -270,13 +257,13 @@ class TestDisplayResults:
             }
         }
 
-        display_results(extracted_metadata, notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
+        display_results(extracted_metadata, notion_update)
 
         captured = capsys.readouterr()
         output = captured.out
 
         # Check that the main sections are present
-        assert "JOB METADATA EXTRACTION RESULTS" in output
+        assert "📊 EXTRACTED METADATA:" in output
         assert "EXTRACTED METADATA:" in output
 
         # Check that the extracted metadata is displayed
@@ -305,7 +292,7 @@ class TestDisplayResults:
             }
         }
 
-        display_results(extracted_metadata, notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
+        display_results(extracted_metadata, notion_update)
 
         captured = capsys.readouterr()
         output = captured.out
@@ -319,13 +306,13 @@ class TestDisplayResults:
         extracted_metadata: dict[str, str] = {}
         notion_update: dict[str, Any] = {"properties": {}}
 
-        display_results(extracted_metadata, notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
+        display_results(extracted_metadata, notion_update)
 
         captured = capsys.readouterr()
         output = captured.out
 
         # Check that the structure is still displayed even with empty data
-        assert "JOB METADATA EXTRACTION RESULTS" in output
+        assert "📊 EXTRACTED METADATA:" in output
         assert "EXTRACTED METADATA:" in output
 
     def test_display_results_json_formatting(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -337,7 +324,7 @@ class TestDisplayResults:
             }
         }
 
-        display_results(extracted_metadata, notion_update, ExtractionMethod.OPENAI_WEB_SEARCH)
+        display_results(extracted_metadata, notion_update)
 
         captured = capsys.readouterr()
         output = captured.out
