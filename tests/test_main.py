@@ -1,6 +1,5 @@
 """Tests for the main application functionality."""
 
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -40,7 +39,7 @@ class TestParseArguments:
     def test_parse_arguments_missing_url(self) -> None:
         """Test parsing arguments when no command is specified."""
         with pytest.raises(SystemExit):
-            parse_arguments()
+            parse_arguments(default_model="gpt-4-test")
 
 
 class TestMain:
@@ -124,7 +123,7 @@ class TestMain:
             "gpt-4o",
         )
         mock_convert.assert_called_once_with(mock_extracted_metadata, mock_database_schema)
-        mock_display_results.assert_called_once_with(mock_extracted_metadata, mock_notion_update)
+        mock_display_results.assert_called_once_with(mock_extracted_metadata)
 
     @patch("src.main.Settings", autospec=True)
     @patch("src.main.parse_arguments")
@@ -248,16 +247,7 @@ class TestDisplayResults:
             "is_remote": True,
         }
 
-        notion_update = {
-            "properties": {
-                "job_title": {"rich_text": [{"text": {"content": "Software Engineer"}}]},
-                "company": {"rich_text": [{"text": {"content": "Tech Corp"}}]},
-                "salary": {"number": 100000.0},
-                "is_remote": {"checkbox": True},
-            }
-        }
-
-        display_results(extracted_metadata, notion_update)
+        display_results(extracted_metadata)
 
         captured = capsys.readouterr()
         output = captured.out
@@ -279,20 +269,7 @@ class TestDisplayResults:
             "job_title": "Full Stack Developer",
         }
 
-        notion_update = {
-            "properties": {
-                "skills": {
-                    "multi_select": [
-                        {"name": "Python"},
-                        {"name": "JavaScript"},
-                        {"name": "Docker"},
-                    ]
-                },
-                "job_title": {"rich_text": [{"text": {"content": "Full Stack Developer"}}]},
-            }
-        }
-
-        display_results(extracted_metadata, notion_update)
+        display_results(extracted_metadata)
 
         captured = capsys.readouterr()
         output = captured.out
@@ -304,9 +281,8 @@ class TestDisplayResults:
     def test_display_results_empty_metadata(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test display_results with empty metadata."""
         extracted_metadata: dict[str, str] = {}
-        notion_update: dict[str, Any] = {"properties": {}}
 
-        display_results(extracted_metadata, notion_update)
+        display_results(extracted_metadata)
 
         captured = capsys.readouterr()
         output = captured.out
@@ -318,13 +294,8 @@ class TestDisplayResults:
     def test_display_results_json_formatting(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Test that JSON is properly formatted in display_results."""
         extracted_metadata = {"test": "value"}
-        notion_update = {
-            "properties": {
-                "test": {"rich_text": [{"text": {"content": "value"}}]},
-            }
-        }
 
-        display_results(extracted_metadata, notion_update)
+        display_results(extracted_metadata)
 
         captured = capsys.readouterr()
         output = captured.out

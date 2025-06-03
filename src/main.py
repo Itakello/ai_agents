@@ -14,7 +14,7 @@ from src.resume_tailoring.pdf_compiler import PDFCompiler
 from src.resume_tailoring.tailor_service import TailorService
 
 
-def parse_arguments(default_model: str = "gpt-4o") -> argparse.Namespace:
+def parse_arguments(default_model: str) -> argparse.Namespace:
     """Parse command line arguments.
 
     Args:
@@ -26,8 +26,7 @@ def parse_arguments(default_model: str = "gpt-4o") -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Job Finder Assistant - Extract metadata from job postings and store all data in Notion",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
+        epilog="""Examples:
   # Extract metadata from a job URL
   python src/main.py extract https://example.com/job-posting
   python src/main.py extract https://linkedin.com/jobs/view/123456 --model gpt-4o-mini
@@ -63,12 +62,11 @@ Examples:
     return parser.parse_args()
 
 
-def display_results(extracted_metadata: dict[str, Any], notion_update: dict[str, Any]) -> None:
+def display_results(extracted_metadata: dict[str, Any]) -> None:
     """Display the extracted metadata and Notion-formatted results in the CLI.
 
     Args:
         extracted_metadata: The raw extracted metadata from the extraction service
-        notion_update: The converted metadata in Notion format
     """
 
     print("\n📊 EXTRACTED METADATA:")
@@ -121,7 +119,7 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
         logger.error(f"Failed to save to Notion database: {str(e)}")
 
     # Display results in CLI
-    display_results(extracted_metadata, notion_update)
+    display_results(extracted_metadata)
 
 
 def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -> None:
