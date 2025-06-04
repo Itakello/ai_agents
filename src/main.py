@@ -85,7 +85,7 @@ def display_results(extracted_metadata: dict[str, Any]) -> None:
         print(f"{key}: {value_str}")
 
 
-def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None:
+def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict[str, Any]:
     """Handle the extract command to extract metadata from a job URL and save everything in Notion."""
     # Initialize services
     logger.info("Initializing services...")
@@ -121,8 +121,7 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
     except Exception as e:
         logger.error(f"Failed to save to Notion database: {str(e)}")
 
-    # Display results in CLI
-    display_results(extracted_metadata)
+    return extracted_metadata
 
 
 def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -> None:
@@ -143,40 +142,8 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
         # Fetch job metadata from Notion by job URL
         job_metadata = notion_service.find_page_by_url(args.job_url)
 
-        markdown_content = None
         if not job_metadata:
-            logger.error(f"No job found in Notion database with URL: {args.job_url}")
-            sys.exit(1)
-        if "properties" in job_metadata:
-            for prop_name, prop_value in job_metadata["properties"].items():
-                if prop_value.get("type") == "title":
-                    title_texts = prop_value.get("title", [])
-                    if title_texts:
-                        job_metadata[prop_name] = "".join([t.get("plain_text", "") for t in title_texts])
-                elif prop_value.get("type") == "rich_text":
-                    rich_texts = prop_value.get("rich_text", [])
-                    if rich_texts:
-                        # If this is the markdown property, extract it
-                        if prop_name.lower() in [
-                            "job description markdown",
-                            "markdown",
-                            "job markdown",
-                            "job description",
-                        ]:
-                            markdown_content = "".join([t.get("plain_text", "") for t in rich_texts])
-                        job_metadata[prop_name] = "".join([t.get("plain_text", "") for t in rich_texts])
-                elif prop_value.get("type") == "select":
-                    select_value = prop_value.get("select")
-                    if select_value:
-                        job_metadata[prop_name] = select_value.get("name", "")
-                elif prop_value.get("type") == "url":
-                    url_value = prop_value.get("url")
-                    if url_value:
-                        job_metadata[prop_name] = url_value
-
-        if not markdown_content:
-            logger.error(f"No job description found in Notion for this job URL: {args.job_url}")
-            sys.exit(1)
+            job_metadata = handle_extract_command(args, settings)
 
         # Read master resume content
         logger.info("Reading master resume content...")
@@ -216,8 +183,8 @@ def main() -> None:
 
         # Handle different commands
         if args.command == "extract":
-            handle_extract_command(args, settings)
-            logger.success("Job Finder Assistant completed successfully!")
+            job_metadata = handle_extract_command(args, settings)
+            display_results(job_metadata)
         elif args.command == "tailor-resume":
             handle_tailor_resume_command(args, settings)
         else:

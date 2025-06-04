@@ -78,8 +78,6 @@ class TailorService:
         # 3. Apply diff using the new apply_diff function
         tailored_tex_content = apply_diff(master_resume_tex_content, llm_response)
 
-        temp_files: dict[str, str | bytes] = {}
-
         with TemporaryDirectory() as temp_dir:
             temp_dir_path = Path(temp_dir)
             tailored_tex_path = temp_dir_path / f"{settings.TAILORED_RESUME_STEM}.tex"
@@ -106,8 +104,6 @@ class TailorService:
                 master_resume_path, diff_tex_path, settings.TAILORED_RESUME_DIFF_STEM, output_subdir=""
             )
             if diff_tex_result_path and diff_tex_result_path.exists():
-                with diff_tex_result_path.open(encoding="utf-8") as diff_tex_file:
-                    temp_files["diff_tex"] = diff_tex_file.read()
                 # Compile diff tex to PDF
                 compiled_diff_pdf_path = self.latex_service.compile_resume(diff_tex_result_path)
                 if compiled_diff_pdf_path and compiled_diff_pdf_path.exists():
@@ -116,5 +112,3 @@ class TailorService:
                         notion_page_id,
                         settings.TAILORED_RESUME_DIFF_PROPERTY_NAME,
                     )
-            # All temp files and the directory are cleaned up automatically
-            temp_files.clear()
