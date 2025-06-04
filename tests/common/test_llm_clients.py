@@ -84,8 +84,8 @@ class TestOpenAIClient:
         with pytest.raises(ValueError, match="At least one of sys_prompt or user_prompt must be provided"):
             client.get_structured_response(sys_prompt=None, user_prompt=None, model_name="gpt-4", schema=schema)
 
-    def test_get_chat_completion_handles_empty_response(self, mock_client: MagicMock) -> None:
-        """Test that get_chat_completion handles empty responses gracefully."""
+    def test_get_response_handles_empty_response(self, mock_client: MagicMock) -> None:
+        """Test that get_response handles empty responses gracefully."""
         # Arrange
         api_key = "test-api-key"
         prompt = "Test prompt"
@@ -102,8 +102,8 @@ class TestOpenAIClient:
         # Assert
         assert response == ""
 
-    def test_get_chat_completion_uses_default_model(self, mock_client: MagicMock) -> None:
-        """Test that get_chat_completion uses the default model when none is specified."""
+    def test_get_response_uses_default_model(self, mock_client: MagicMock) -> None:
+        """Test that get_response uses the default model when none is specified."""
         # Arrange
         api_key = "test-api-key"
         prompt = "Test prompt"
@@ -117,8 +117,8 @@ class TestOpenAIClient:
         call_args = mock_client.return_value.responses.create.call_args[1]
         assert call_args["model"] == "gpt-4o"
 
-    def test_get_chat_completion_handles_api_errors(self, mock_client: MagicMock) -> None:
-        """Test that get_chat_completion properly handles API errors."""
+    def test_get_response_handles_api_errors(self, mock_client: MagicMock) -> None:
+        """Test that get_response properly handles API errors."""
         # Test 1: API returns an error object
         error_response = type(
             "Response",
