@@ -2,7 +2,7 @@
 
 import os
 from collections.abc import Generator
-from pathlib import Path  # Moved import here
+from pathlib import Path
 from typing import Any
 from unittest import mock
 from unittest.mock import MagicMock, patch
