@@ -30,7 +30,7 @@ def parse_arguments(default_model: str) -> argparse.Namespace:
   python src/main.py extract https://linkedin.com/jobs/view/123456 --model gpt-4o-mini
 
   # Tailor resume for a specific job
-  python src/main.py tailor-resume --job-url https://example.com/job-posting
+  python src/main.py tailor-resume https://example.com/job-posting
         """,
     )
 
@@ -38,23 +38,31 @@ def parse_arguments(default_model: str) -> argparse.Namespace:
 
     # Extract command
     extract_parser = subparsers.add_parser("extract", help="Extract metadata from a job URL")
-    extract_parser.add_argument("job_url", help="URL of the job posting to analyze")
+    extract_parser.add_argument(
+        "job_url",
+        type=str,
+        help="URL of the job posting to analyze",
+    )
     extract_parser.add_argument(
         "--model",
         default=default_model,
+        type=str,
         help=f"OpenAI model to use for extraction (default: {default_model})",
     )
 
     extract_parser.add_argument(
         "--add-properties-options",
-        action="store_true",
+        default=False,
+        type=bool,
         help="Add options to Notion properties where applicable (e.g., select, multi_select)",
     )
 
     # Tailor resume command
     tailor_parser = subparsers.add_parser("tailor-resume", help="Tailor resume for a specific job")
     tailor_parser.add_argument(
-        "--job-url", required=True, help="Job posting URL (matches the URL property in Notion DB)"
+        "job_url",
+        type=str,
+        help="Job posting URL (matches the URL property in Notion DB)",
     )
 
     return parser.parse_args()

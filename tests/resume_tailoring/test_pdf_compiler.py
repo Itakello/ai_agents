@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.resume_tailoring.pdf_compiler import PDFCompiler
+from src.resume_tailoring.pdf_compiler import PDFCompilationError, PDFCompiler
 
 
 @pytest.fixture
@@ -53,8 +53,8 @@ def test_compile_tex_to_pdf_failure(monkeypatch: pytest.MonkeyPatch, minimal_tex
 
     with patch("subprocess.run", side_effect=fake_run):
         compiler = PDFCompiler()
-        result = compiler.compile_tex_to_pdf(minimal_tex_file, output_dir)
-        assert result is None
+        with pytest.raises(PDFCompilationError):
+            compiler.compile_tex_to_pdf(minimal_tex_file, output_dir)
         assert not (output_dir / "test_resume.pdf").exists()
 
 

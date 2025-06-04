@@ -3,6 +3,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 
+class PDFCompilationError(Exception):
+    """Raised when PDF compilation from LaTeX fails."""
+
+    pass
+
+
 class PDFCompiler:
     def __init__(
         self,
@@ -25,14 +31,14 @@ class PDFCompiler:
         ]
         self.command_template = command_template
 
-    def compile_tex_to_pdf(self, tex_file_path: Path, output_directory: Path) -> Path | None:
+    def compile_tex_to_pdf(self, tex_file_path: Path, output_directory: Path) -> Path:
         """
         Compiles a .tex file to PDF using pdflatex.
         Args:
             tex_file_path: Path to the .tex file.
             output_directory: Directory to place the output PDF.
         Returns:
-            Path to the generated PDF, or None on failure.
+            Path to the generated PDF.
         """
         output_directory.mkdir(parents=True, exist_ok=True)
         tex_file_path = tex_file_path.resolve()
@@ -52,17 +58,13 @@ class PDFCompiler:
             ]
             cmd = [self.pdflatex_cmd] + args
             shell = False
-        try:
-            # Run pdflatex (twice for references, if needed)
-            for _ in range(2):
-                cmd_to_run = cmd
-                if shell and isinstance(cmd, list):
-                    cmd_to_run = " ".join(cmd)
-                result = subprocess.run(cmd_to_run, shell=shell, capture_output=True, cwd=tex_file_path.parent)
-                if result.returncode != 0:
-                    break
-            if pdf_path.exists():
-                return pdf_path
-        except Exception:
-            pass
-        return None
+        for _ in range(2):
+            cmd_to_run = cmd
+            if shell and isinstance(cmd, list):
+                cmd_to_run = " ".join(cmd)
+            result = subprocess.run(cmd_to_run, shell=shell, capture_output=True, cwd=tex_file_path.parent)
+            if result.returncode != 0:
+                break
+        if pdf_path.exists():
+            return pdf_path
+        raise PDFCompilationError(f"Failed to compile {tex_file_path} to PDF")

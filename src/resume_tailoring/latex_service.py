@@ -23,7 +23,7 @@ class LatexService:
         write_file_content(tex_path, content)
         return tex_path
 
-    def compile_resume(self, tex_file_path: Path) -> Path | None:
+    def compile_resume(self, tex_file_path: Path) -> Path:
         output_dir = tex_file_path.parent
         return self.pdf_compiler.compile_tex_to_pdf(tex_file_path, output_dir)
 
