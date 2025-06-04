@@ -247,7 +247,7 @@ pytest
 
 ## Linting and Formatting
 
-This project uses `pre-commit` with `black` for code formatting and `ruff` for linting and additional formatting.
+This project uses `pre-commit` with `ruff` for linting **and** formatting and `mypy` for static type checking. Ruff's built-in formatter replaces the need for `black`.
 
 **Setup (First time for a new developer):**
 
@@ -259,7 +259,7 @@ This project uses `pre-commit` with `black` for code formatting and `ruff` for l
     ```bash
     python -m pre_commit install
     ```
-    This will ensure that `black` and `ruff` run on changed files before each commit.
+    This will ensure that `ruff` (formatting and linting) and `mypy` run on changed files before each commit.
 
 **Running manually:**
 
