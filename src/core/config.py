@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     # File paths and directories
     PROMPTS_DIRECTORY: Path = Path("prompts")
     EXTRACT_METADATA: str = "extract_metadata.txt"
+    TAILOR_RESUME_SYSTEM_PROMPT_FILENAME: str = "tailor_resume_llm_prompt.txt"  # System prompt filename for tailoring
+    TAILOR_RESUME_USER_PROMPT_FILENAME: str = "tailor_resume_llm_user_prompt.txt"  # User prompt filename for tailoring
 
     # Performance and reliability settings
     API_KEY_MIN_LENGTH: int = 10
