@@ -7,13 +7,8 @@ Notion database schemas.
 """
 
 import asyncio
-import os
-import tempfile
-import uuid
-from pathlib import Path
 from typing import Any
 
-import requests
 from crawl4ai import AsyncWebCrawler  # type: ignore
 from crawl4ai.async_configs import BrowserConfig, CacheMode, CrawlerRunConfig  # type: ignore
 from crawl4ai.models import CrawlResultContainer  # type: ignore
@@ -85,77 +80,116 @@ class ExtractorService:
                 raise
             raise ExtractorServiceError(f"Error during metadata extraction from URL: {str(e)}") from e
 
-        # --- Add job ID to extracted metadata ---
-        if extracted_metadata is not None:
-            if "ID" not in extracted_metadata or not extracted_metadata["ID"]:
-                extracted_metadata["ID"] = str(uuid.uuid4())
         return extracted_metadata
 
     def _extract_metadata_with_crawl4ai(
         self, job_url: str, notion_database_schema: dict[str, Any], model_name: str
     ) -> dict[str, Any]:
-        """Extract metadata using Crawl4AI for crawling + GPT for extraction."""
+        """
+        Extract metadata from a job posting URL using Crawl4AI and OpenAI.
 
-        # Try to get markdown content from Notion DB property 'Job Description Markdown'
+        - Retrieves or crawls markdown content for the job posting.
+        - Ensures the markdown is uploaded to Notion (creating the page if needed).
+        - Extracts structured metadata using OpenAI.
+        - Returns metadata including markdown and Notion job/page ID.
+        """
+        page_id, markdown_content = self._get_or_create_markdown(job_url)
+
+        # Convert Notion schema to OpenAI JSON Schema format
+        openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
+
+        # Prepare prompt
+        prompt = self._prepare_extraction_prompt(markdown_content)
+
+        # Extract structured metadata
+        metadata = self._extract_structured_metadata(
+            prompt=prompt,
+            model_name=model_name,
+            openai_schema=openai_schema,
+        )
+
+        # Add markdown and job/page id to metadata
+        metadata["markdown_content"] = markdown_content
+        metadata["notion_job_id"] = page_id
+
+        # Print the inserted metadata (mimic display_results style)
+        print("\n📊 EXTRACTED METADATA:")
+        print("-" * 40)
+        for key, value in metadata.items():
+            if isinstance(value, list):
+                value_str = ", ".join(str(v) for v in value)
+            else:
+                value_str = str(value)
+            print(f"{key}: {value_str}")
+
+        return metadata
+
+    def _get_or_create_markdown(self, job_url: str) -> tuple[str, str]:
+        """
+        Retrieve markdown content from Notion if available, otherwise crawl and upload it.
+        Returns (page_id, markdown_content).
+        """
+        settings = get_settings()
+        markdown_prop_name = settings.JOB_DESCRIPTION_MARKDOWN_PROPERTY
         notion_page = self.notion_service.find_page_by_url(job_url)
         markdown_content = None
         page_id = None
+
         if notion_page:
-            page_id = notion_page.get("id")
-            properties = notion_page.get("properties", {})
-            jd_markdown_prop = properties.get("Job Description Markdown")
-            if jd_markdown_prop:
-                # Notion file property format
-                files = jd_markdown_prop.get("files", [])
-                if files and isinstance(files, list):
-                    file_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
-                    if file_url:
-                        resp = requests.get(file_url)
-                        if resp.ok:
-                            markdown_content = resp.text
+            page_id = str(notion_page.get("id"))
+            # Try to retrieve markdown from Notion files property
+            markdown_content = self.notion_service.get_file_from_page_property(page_id, markdown_prop_name)
+
         if not markdown_content:
-            # Crawl the URL to get markdown content using async crawler
-            async def crawl_url_async(url: str) -> str:
-                browser_config = self._create_browser_config()
-                run_config = self._create_run_config()
-                async with AsyncWebCrawler(config=browser_config) as crawler:
-                    result = await crawler.arun(url=url, config=run_config)
-                    if not isinstance(result, CrawlResultContainer):
-                        raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
-                    if not result.success:
-                        raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
-                    return str(result.markdown)
-
-            markdown_content = asyncio.run(crawl_url_async(job_url))
-            # Save markdown content to Notion DB file property
-
+            markdown_content = self._crawl_markdown(job_url)
             if not page_id:
                 # If page does not exist, create it with at least the URL and file property
                 schema = self.notion_service.get_database_schema()
                 url_prop = self.notion_service._find_url_property_name(schema)
                 properties = {
                     (url_prop or "URL"): {"url": job_url},
-                    "Job Description Markdown": {"files": []},
+                    markdown_prop_name: {"files": []},
                 }
                 page = self.notion_service.create_page(properties)
                 page_id = str(page.get("id"))
-            # Write markdown to temp file and upload
-            with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as tmp_md:
-                tmp_md.write(markdown_content)
-                tmp_md_path = Path(tmp_md.name)
-            self.notion_service.upload_file_to_page_property(page_id, "Job Description Markdown", tmp_md_path)
-            os.remove(tmp_md_path)
+            # Upload markdown to Notion files property
+            self.notion_service.upload_file_to_page_property(page_id, markdown_prop_name, markdown_content)
 
-        # Convert Notion schema to OpenAI JSON Schema format
-        openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
+        return str(page_id), markdown_content
 
-        # Load and build prompt from template using configured paths
+    def _crawl_markdown(self, job_url: str) -> str:
+        """
+        Crawl the given URL asynchronously and return markdown content.
+        """
+
+        async def crawl_url_async(url: str) -> str:
+            browser_config = self._create_browser_config()
+            run_config = self._create_run_config()
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                result = await crawler.arun(url=url, config=run_config)
+                if not isinstance(result, CrawlResultContainer):
+                    raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
+                if not result.success:
+                    raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
+                return str(result.markdown)
+
+        return asyncio.run(crawl_url_async(job_url))
+
+    def _prepare_extraction_prompt(self, markdown_content: str) -> str:
+        """
+        Load and build the extraction prompt from template using the markdown content.
+        """
         settings = get_settings()
         prompt_path = settings.PROMPTS_DIRECTORY / settings.EXTRACT_METADATA
         prompt_template = read_file_content(prompt_path)
-        prompt = replace_prompt_placeholders(prompt_template, CONTENT=markdown_content)
+        return replace_prompt_placeholders(prompt_template, CONTENT=markdown_content)
 
-        # Use OpenAI for structured extraction
+    def _extract_structured_metadata(
+        self, prompt: str, model_name: str, openai_schema: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Use OpenAI for structured metadata extraction.
+        """
         return self.openai_client.get_structured_response(
             sys_prompt=prompt,
             user_prompt=None,

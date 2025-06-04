@@ -1,6 +1,7 @@
 """Tests for the NotionService class."""
 
 from collections.abc import Generator
+from pathlib import Path  # Moved import here
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -382,15 +383,15 @@ class TestNotionService:
         assert query_args[1]["filter"]["property"] == "Company Website"
         assert result == {"id": "new_page_id"}
 
-    def test_upload_file_to_page_property_url(self, mock_client: MagicMock) -> None:
+    def test_upload_file_to_page_property_url(self, mock_client: MagicMock, tmp_path: Path) -> None:
         """Test upload_file_to_page_property stores local file path in a URL property."""
-        from pathlib import Path
 
         api_key = "test_api_key"
         database_id = "test_database_id"
         page_id = "test_page_id"
         property_name = "Resume PDF"
-        file_path = Path("/tmp/test_resume.pdf")
+        file_path = tmp_path / "test_resume.pdf"
+        file_path.write_text("dummy content")
         # Mock schema with URL property
         service = NotionService(api_key=api_key, database_id=database_id)
         mock_instance = mock_client.return_value
@@ -402,22 +403,22 @@ class TestNotionService:
             },
         }
         # Act
-        result = service.upload_file_to_page_property(page_id, property_name, file_path)
+        result = service.upload_file_to_page_property(file_path, page_id, property_name)
         # Assert
         mock_instance.pages.update.assert_called_once_with(
             page_id=page_id, properties={property_name: {"url": str(file_path)}}
         )
         assert result == str(file_path)
 
-    def test_upload_file_to_page_property_rich_text(self, mock_client: MagicMock) -> None:
+    def test_upload_file_to_page_property_rich_text(self, mock_client: MagicMock, tmp_path: Path) -> None:
         """Test upload_file_to_page_property stores local file path in a rich_text property."""
-        from pathlib import Path
 
         api_key = "test_api_key"
         database_id = "test_database_id"
         page_id = "test_page_id"
         property_name = "Resume Path"
-        file_path = Path("/tmp/test_resume.pdf")
+        file_path = tmp_path / "test_resume.pdf"
+        file_path.write_text("dummy content")
         # Mock schema with rich_text property
         service = NotionService(api_key=api_key, database_id=database_id)
         mock_instance = mock_client.return_value
@@ -429,25 +430,25 @@ class TestNotionService:
             },
         }
         # Act
-        result = service.upload_file_to_page_property(page_id, property_name, file_path)
+        result = service.upload_file_to_page_property(file_path, page_id, property_name)
         # Assert
         mock_instance.pages.update.assert_called_once_with(
             page_id=page_id, properties={property_name: {"rich_text": [{"text": {"content": str(file_path)}}]}}
         )
         assert result == str(file_path)
 
-    def test_upload_file_to_page_property_handles_error(self, mock_client: MagicMock) -> None:
+    def test_upload_file_to_page_property_handles_error(self, mock_client: MagicMock, tmp_path: Path) -> None:
         """Test upload_file_to_page_property returns None on error."""
-        from pathlib import Path
 
         api_key = "test_api_key"
         database_id = "test_database_id"
         page_id = "test_page_id"
         property_name = "Resume PDF"
-        file_path = Path("/tmp/test_resume.pdf")
+        file_path = tmp_path / "test_resume.pdf"
+        file_path.write_text("dummy content")
         service = NotionService(api_key=api_key, database_id=database_id)
         mock_instance = mock_client.return_value
         # Simulate error in update_page_property
         mock_instance.databases.retrieve.side_effect = Exception("Schema error")
-        result = service.upload_file_to_page_property(page_id, property_name, file_path)
-        assert result is None
+        with pytest.raises(NotionAPIError, match="Failed to fetch database schema"):
+            service.upload_file_to_page_property(file_path, page_id, property_name)

@@ -8,6 +8,7 @@ including fetching page content and updating page properties.
 from pathlib import Path
 from typing import Any
 
+import requests
 from notion_client import Client as NotionClient
 
 
@@ -348,37 +349,129 @@ class NotionService:
 
         return None
 
-    def upload_file_to_page_property(self, page_id: str, property_name: str, file_path: Path) -> str | None:
-        """Store the local file path in a Notion page property (MVP: as text or URL).
-
-        Args:
-            page_id: The ID of the Notion page to update.
-            property_name: The name of the property to update (should be a text or URL property).
-            file_path: The Path to the file to "upload" (actually just storing the local path).
+    def upload_file_to_page_property(
+        self,
+        file_path: str | Path,
+        page_id: str,
+        property_name: str,
+    ) -> str | None:
+        """
+        Uploads a file to a Notion page property.
 
         Returns:
-            The string value stored in Notion (the local file path), or None on failure.
+            str: The file path as a string if the property is of type 'url' or 'rich_text'.
+            None: If the property is of type 'files' or on error.
+
+        Args:
+            file_path: Path to the file to upload.
+            page_id: The ID of the Notion page to update.
+            property_name: The name of the property to update (must be of type 'files').
+        Raises:
+            NotionAPIError: If the upload fails or property type is not 'files'.
         """
+        import mimetypes
         from pathlib import Path
 
+        file_path = Path(file_path)
+        if not file_path.exists() or not file_path.is_file():
+            raise NotionAPIError(f"File does not exist: {file_path}")
+
+        schema = self.get_database_schema()
+        prop_schema = schema.get(property_name, {})
+        prop_type = prop_schema.get("type")
+
+        if prop_type == "url":
+            self.update_page_property(page_id, property_name, {"url": str(file_path)})
+            return str(file_path)
+        if prop_type == "rich_text":
+            self.update_page_property(page_id, property_name, {"rich_text": [{"text": {"content": str(file_path)}}]})
+            return str(file_path)
+        if prop_type != "files":
+            raise NotionAPIError(
+                f"Property '{property_name}' is of type '{prop_type}'. "
+                f"This function currently only supports 'files', 'url', or 'rich_text' for this operation."
+            )
+
+        # Step 1: Create a File Upload object using Notion SDK
+        file_name = file_path.name
+        mime_type, _ = mimetypes.guess_type(str(file_path))
+        if not mime_type:
+            mime_type = "application/octet-stream"  # Default MIME type
+
         try:
-            file_path_str = str(file_path) if isinstance(file_path, str | Path) else file_path
-            # Try to update as URL property first, fallback to text/rich_text
-            # Fetch schema to determine property type
-            schema = self.get_database_schema()
-            prop_schema = schema.get(property_name, {})
-            prop_type = prop_schema.get("type", "rich_text")
-            if prop_type == "url":
-                value = {"url": file_path_str}
-            elif prop_type == "rich_text":
-                value = {"rich_text": [{"text": {"content": file_path_str}}]}  # type: ignore[dict-item]
-            elif prop_type == "title":
-                value = {"title": [{"text": {"content": file_path_str}}]}  # type: ignore[dict-item]
-            else:
-                # Default to rich_text
-                value = {"rich_text": [{"text": {"content": file_path_str}}]}  # type: ignore[dict-item]
-            self.update_page_property(page_id, property_name, value)
-            return file_path_str
+            # The NotionClient's request method handles auth, base URL, and standard headers.
+            # The 'type' in the body here is Notion's internal 'file' type, not the mime_type.
+            upload_obj_response = self.client.request(
+                path="file_uploads",
+                method="POST",
+                body={"name": file_name, "type": "file"},
+            )
+            # The SDK's request method should return a parsed response or raise an error.
+            upload_id = upload_obj_response["id"]
+            upload_url = upload_obj_response["upload_url"]
+        except Exception as e:
+            raise NotionAPIError(f"Failed to create Notion file upload object: {e}") from e
+
+        # Step 2: Upload the file contents
+        try:
+            with open(file_path, "rb") as f:
+                # For S3 pre-signed URL, POST the raw file data with the correct Content-Type.
+                # Notion-specific headers (Authorization, Notion-Version) are not needed for S3.
+                s3_headers = {"Content-Type": mime_type}
+                file_data = f.read()
+                upload_resp = requests.post(
+                    upload_url,
+                    headers=s3_headers,
+                    data=file_data,  # Send raw bytes
+                    timeout=60,
+                )
+                # This will raise an HTTPError if the S3 upload fails (e.g., 400, 403, 500).
+                # The surrounding try-except block will catch this and re-raise as NotionAPIError.
+                upload_resp.raise_for_status()
+        except Exception as e:
+            raise NotionAPIError(f"Failed to upload file contents to Notion: {e}") from e
+
+        # Step 3: Attach the file to the page property
+        try:
+            files_value = [
+                {
+                    "type": "file_upload",
+                    "file_upload": {"id": upload_id},
+                    "name": file_name,
+                }
+            ]
+            self.update_page_property(page_id, property_name, {"files": files_value})
+        except Exception as e:
+            raise NotionAPIError(f"Failed to attach uploaded file to Notion page: {e}") from e
+
+        return None
+
+    def get_file_from_page_property(self, page_id: str, property_name: str) -> str | None:
+        """
+        Retrieve markdown content from a Notion 'files' property on the given page.
+
+        Args:
+            page_id: The ID of the Notion page.
+            property_name: The name of the property to retrieve (must be of type 'files').
+
+        Returns:
+            The markdown content as a string, or None if not found or download fails.
+        """
+
+        try:
+            page = self.get_page_content(page_id)
+            prop = page.get("properties", {}).get(property_name)
+            if not prop or prop.get("type") != "files":
+                return None
+            files = prop.get("files", [])
+            if not files or not isinstance(files, list):
+                return None
+            file_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+            if not file_url:
+                return None
+            resp = requests.get(file_url)
+            if resp.ok:
+                return resp.text
+            return None
         except Exception:
-            # Log or handle error as needed
             return None
