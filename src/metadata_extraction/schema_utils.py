@@ -245,13 +245,16 @@ def convert_openai_response_to_notion_update(
         notion_properties: Notion database property definitions
 
     Returns:
-        Dictionary ready for Notion page update API call
+        Dictionary ready for Notion page update API call, with 'properties' key.
     """
-    notion_update: dict[str, Any] = {"properties": {}}
+    from .schema_utils import openai_data_to_notion_property
 
+    properties: dict[str, Any] = {}
     for prop_name, value in openai_response.items():
-        if prop_name in notion_properties and value is not None:
+        if prop_name in notion_properties:
             prop_type = notion_properties[prop_name].get("type")
-            notion_update["properties"][prop_name] = openai_data_to_notion_property(value, prop_type)
-
-    return notion_update
+            notion_value = openai_data_to_notion_property(value, prop_type)
+            # Only include if the value is not None/empty
+            if notion_value:
+                properties[prop_name] = notion_value
+    return {"properties": properties}

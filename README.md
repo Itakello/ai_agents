@@ -9,7 +9,7 @@ This repository provides a comprehensive AI-powered system for extracting, proce
 - **SQLite-based Caching System**: Local file-based caching for crawled web content with PDF export capabilities
 - **Schema Conversion**: Sophisticated Notion-to-OpenAI schema conversion with special directives
 - **Configuration Management**: Environment-based configuration with validation and type safety
-- **Modern Python Typing**: Comprehensive typing setup with pre-commit hooks for code quality
+- **Modern Python Typing**: Comprehensive typing setup with pre-commit hooks for code quality (Python 3.12, mypy 1.16.0)
 - **Unit Testing**: Test coverage for core modules with fixtures and mocks
 - **Logging and Monitoring**: Structured logging with configurable levels and output formats
 - **Code Quality**: Pre-commit hooks with Ruff, Black, and MyPy integration
@@ -243,16 +243,23 @@ python src/main.py
 pytest
 ```
 
+To run type checks with pytest-mypy:
+
+```bash
+pytest --mypy
+```
+
 ## Linting and Formatting
 
-This project uses `pre-commit` with `black` for code formatting and `ruff` for linting and additional formatting.
+This project uses `pre-commit` with `black` for code formatting, `ruff` for linting, and `pytest-mypy` for static type checking (Python 3.12, mypy 1.16.0).
 
 **Setup (First time for a new developer):**
 
-1.  Ensure you have installed development dependencies:
+1.  Ensure you have installed development dependencies (requires Python 3.12):
     ```bash
     pip install -e .[dev]
     ```
+    This will install pytest-mypy and mypy 1.16.0 for static type checking.
 2.  Install the pre-commit hooks:
     ```bash
     python -m pre_commit install

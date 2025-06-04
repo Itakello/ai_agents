@@ -115,13 +115,12 @@ class NotionService:
         Raises:
             NotionAPIError: If there's an error updating the page properties.
         """
+        # Unwrap 'properties' key if present
+        if "properties" in properties_update and isinstance(properties_update["properties"], dict):
+            properties = properties_update["properties"]
+        else:
+            properties = properties_update
         try:
-            # Handle both formats: with and without "properties" wrapper
-            if "properties" in properties_update:
-                properties = properties_update["properties"]
-            else:
-                properties = properties_update
-
             result = self.client.pages.update(page_id=page_id, properties=properties)
             if isinstance(result, dict):
                 return result
@@ -221,7 +220,7 @@ class NotionService:
             # Check if page with this URL already exists
             existing_page = self.find_page_by_url(url)
             # Prepare properties for Notion API format
-            properties = self._format_properties_for_notion(extracted_data, url, database_schema)
+            properties = self._format_properties_for_notion(extracted_data, database_schema)
             if existing_page:
                 page_id = existing_page["id"]
                 return self.update_page_properties(page_id, properties)
@@ -231,7 +230,7 @@ class NotionService:
             raise NotionAPIError(f"Failed to save or update data for URL {url}: {str(e)}") from e
 
     def _format_properties_for_notion(
-        self, extracted_data: dict[str, Any], url: str, database_schema: dict[str, Any]
+        self, extracted_data: dict[str, Any], database_schema: dict[str, Any]
     ) -> dict[str, Any]:
         """Format extracted data into Notion property format based on database schema.
 
@@ -300,22 +299,18 @@ class NotionService:
         file_path: str | Path,
         page_id: str,
         property_name: str,
-    ) -> str | None:
+    ) -> None:
         """
-        Uploads a file to a Notion page property.
-
-        Returns:
-            str: The file path as a string if the property is of type 'url' or 'rich_text'.
-            None: If the property is of type 'files' or on error.
+        Upload a file to a Notion page property of type 'files'.
 
         Args:
             file_path: Path to the file to upload.
             page_id: The ID of the Notion page to update.
             property_name: The name of the property to update (must be of type 'files').
+
         Raises:
             NotionAPIError: If the upload fails or property type is not 'files'.
         """
-
         file_path = Path(file_path)
         if not file_path.exists() or not file_path.is_file():
             raise NotionAPIError(f"File does not exist: {file_path}")
@@ -323,53 +318,58 @@ class NotionService:
         schema = self.get_database_schema()
         prop_schema = schema.get(property_name, {})
         prop_type = prop_schema.get("type")
-
         if prop_type != "files":
             raise NotionAPIError(
-                f"Property '{property_name}' is of type '{prop_type}'. "
-                f"This function currently only supports 'files', 'url', or 'rich_text' for this operation."
+                f"Property '{property_name}' is of type '{prop_type}'. This function only supports 'files' properties."
             )
-
-        # Step 1: Create a File Upload object using Notion SDK
         file_name = file_path.name
         mime_type, _ = mimetypes.guess_type(str(file_path))
         if not mime_type:
-            mime_type = "application/octet-stream"  # Default MIME type
-
+            mime_type = "application/octet-stream"
         try:
-            # The NotionClient's request method handles auth, base URL, and standard headers.
-            # The 'type' in the body here is Notion's internal 'file' type, not the mime_type.
-            upload_obj_response = self.client.request(
+            upload_id, upload_url = self._create_file_upload_object(file_name)
+            self._upload_file_contents(upload_url, file_path, mime_type)
+            self._attach_file_to_page_property(page_id, property_name, upload_id, file_name)
+        except Exception as e:
+            raise NotionAPIError(f"File upload failed: {e}") from e
+
+    def _create_file_upload_object(self, file_name: str) -> tuple[str, str]:
+        """
+        Create a file upload object in Notion and return (upload_id, upload_url).
+        """
+        try:
+            resp = self.client.request(
                 path="file_uploads",
                 method="POST",
                 body={"name": file_name, "type": "file"},
             )
-            # The SDK's request method should return a parsed response or raise an error.
-            upload_id = upload_obj_response["id"]
-            upload_url = upload_obj_response["upload_url"]
+            return resp["id"], resp["upload_url"]
         except Exception as e:
             raise NotionAPIError(f"Failed to create Notion file upload object: {e}") from e
 
-        # Step 2: Upload the file contents
+    def _upload_file_contents(self, upload_url: str, file_path: Path, mime_type: str) -> None:
+        """
+        Upload the file contents to the provided upload_url (Notion expects multipart/form-data).
+        """
         try:
             with open(file_path, "rb") as f:
-                # For S3 pre-signed URL, POST the raw file data with the correct Content-Type.
-                # Notion-specific headers (Authorization, Notion-Version) are not needed for S3.
-                s3_headers = {"Content-Type": mime_type}
-                file_data = f.read()
-                upload_resp = requests.post(
+                files = {"file": (file_path.name, f, mime_type)}
+                resp = requests.post(
                     upload_url,
-                    headers=s3_headers,
-                    data=file_data,  # Send raw bytes
-                    timeout=60,
+                    headers={
+                        "Authorization": f"Bearer {get_settings().NOTION_API_KEY}",
+                        "Notion-Version": "2022-06-28",
+                    },
+                    files=files,
                 )
-                # This will raise an HTTPError if the S3 upload fails (e.g., 400, 403, 500).
-                # The surrounding try-except block will catch this and re-raise as NotionAPIError.
-                upload_resp.raise_for_status()
+                resp.raise_for_status()
         except Exception as e:
-            raise NotionAPIError(f"Failed to upload file contents to Notion: {e}") from e
+            raise NotionAPIError(f"Failed to upload file contents: {e}") from e
 
-        # Step 3: Attach the file to the page property
+    def _attach_file_to_page_property(self, page_id: str, property_name: str, upload_id: str, file_name: str) -> None:
+        """
+        Attach the uploaded file to the Notion page property.
+        """
         try:
             files_value = [
                 {
@@ -381,8 +381,6 @@ class NotionService:
             self.update_page_property(page_id, property_name, {"files": files_value})
         except Exception as e:
             raise NotionAPIError(f"Failed to attach uploaded file to Notion page: {e}") from e
-
-        return None
 
     def get_file_from_page_property(self, page_id: str, property_name: str) -> str | None:
         """

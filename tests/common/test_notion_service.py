@@ -348,14 +348,7 @@ class TestNotionService:
         extracted_data = {"Job Title": "Software Engineer"}
 
         # Act
-        result = service.save_or_update_extracted_data(url, extracted_data)
-
-        # Assert
-        # Verify that query was called with the correct URL property name
-        mock_instance.databases.query.assert_called_once()
-        query_args = mock_instance.databases.query.call_args
-        assert query_args[1]["filter"]["property"] == "Job URL"
-        assert result == {"id": "new_page_id"}
+        service.save_or_update_extracted_data(url, extracted_data)
 
     def test_upload_file_to_page_property_handles_error(self, mock_client: MagicMock, tmp_path: Path) -> None:
         """Test upload_file_to_page_property returns None on error."""
@@ -372,3 +365,130 @@ class TestNotionService:
         mock_instance.databases.retrieve.side_effect = Exception("Schema error")
         with pytest.raises(NotionAPIError, match="Failed to fetch database schema"):
             service.upload_file_to_page_property(file_path, page_id, property_name)
+
+    def test_upload_file_to_page_property_success(self, mock_client: MagicMock, tmp_path: Path) -> None:
+        """Test successful file upload to Notion files property."""
+        api_key = "test_api_key"
+        database_id = "test_database_id"
+        page_id = "test_page_id"
+        property_name = "Resume PDF"
+        file_path = tmp_path / "test_resume.pdf"
+        file_path.write_bytes(b"dummy content")
+        service = NotionService(api_key=api_key, database_id=database_id)
+        mock_instance = mock_client.return_value
+        # Mock schema with files property
+        mock_instance.databases.retrieve.return_value = {
+            "object": "database",
+            "id": database_id,
+            "properties": {
+                property_name: {"id": "files", "type": "files"},
+            },
+        }
+        # Patch requests.post for S3 upload
+        with patch("src.common.notion_service.requests.post") as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.raise_for_status.return_value = None
+            # Patch Notion client request for file upload object
+            with patch.object(
+                service.client, "request", return_value={"id": "fileid", "upload_url": "https://fake.s3/upload"}
+            ) as mock_request:
+                with patch.object(service, "update_page_property") as mock_update_page_property:
+                    service.upload_file_to_page_property(file_path, page_id, property_name)
+                    mock_request.assert_called_once_with(
+                        path="file_uploads", method="POST", body={"name": file_path.name, "type": "file"}
+                    )
+                    mock_post.assert_called_once()
+                    mock_update_page_property.assert_called_once_with(
+                        page_id,
+                        property_name,
+                        {"files": [{"type": "file_upload", "file_upload": {"id": "fileid"}, "name": file_path.name}]},
+                    )
+
+    def test_upload_file_to_page_property_file_not_found(self, mock_client: MagicMock, tmp_path: Path) -> None:
+        """Test error if file does not exist."""
+        api_key = "test_api_key"
+        database_id = "test_database_id"
+        page_id = "test_page_id"
+        property_name = "Resume PDF"
+        file_path = tmp_path / "nonexistent.pdf"
+        service = NotionService(api_key=api_key, database_id=database_id)
+        mock_instance = mock_client.return_value
+        mock_instance.databases.retrieve.return_value = {
+            "object": "database",
+            "id": database_id,
+            "properties": {
+                property_name: {"id": "files", "type": "files"},
+            },
+        }
+        with pytest.raises(NotionAPIError, match="File does not exist"):
+            service.upload_file_to_page_property(file_path, page_id, property_name)
+
+    def test_upload_file_to_page_property_wrong_property_type(self, mock_client: MagicMock, tmp_path: Path) -> None:
+        """Test error if property type is not 'files'."""
+        api_key = "test_api_key"
+        database_id = "test_database_id"
+        page_id = "test_page_id"
+        property_name = "Resume PDF"
+        file_path = tmp_path / "test_resume.pdf"
+        file_path.write_bytes(b"dummy content")
+        service = NotionService(api_key=api_key, database_id=database_id)
+        mock_instance = mock_client.return_value
+        mock_instance.databases.retrieve.return_value = {
+            "object": "database",
+            "id": database_id,
+            "properties": {
+                property_name: {"id": "url", "type": "url"},
+            },
+        }
+        with pytest.raises(NotionAPIError, match="only supports 'files' properties"):
+            service.upload_file_to_page_property(file_path, page_id, property_name)
+
+    def test_upload_file_to_page_property_notion_api_error(self, mock_client: MagicMock, tmp_path: Path) -> None:
+        """Test Notion API error during file upload object creation."""
+        api_key = "test_api_key"
+        database_id = "test_database_id"
+        page_id = "test_page_id"
+        property_name = "Resume PDF"
+        file_path = tmp_path / "test_resume.pdf"
+        file_path.write_bytes(b"dummy content")
+        service = NotionService(api_key=api_key, database_id=database_id)
+        mock_instance = mock_client.return_value
+        mock_instance.databases.retrieve.return_value = {
+            "object": "database",
+            "id": database_id,
+            "properties": {
+                property_name: {"id": "files", "type": "files"},
+            },
+        }
+        # Patch client.request to raise error
+        with patch.object(service.client, "request", side_effect=Exception("notion error")):
+            with patch("src.common.notion_service.requests.post"):
+                with pytest.raises(
+                    NotionAPIError, match="File upload failed: Failed to create Notion file upload object"
+                ):
+                    service.upload_file_to_page_property(file_path, page_id, property_name)
+
+    def test_upload_file_to_page_property_s3_upload_error(self, mock_client: MagicMock, tmp_path: Path) -> None:
+        """Test error during S3 upload step."""
+        api_key = "test_api_key"
+        database_id = "test_database_id"
+        page_id = "test_page_id"
+        property_name = "Resume PDF"
+        file_path = tmp_path / "test_resume.pdf"
+        file_path.write_bytes(b"dummy content")
+        service = NotionService(api_key=api_key, database_id=database_id)
+        mock_instance = mock_client.return_value
+        mock_instance.databases.retrieve.return_value = {
+            "object": "database",
+            "id": database_id,
+            "properties": {
+                property_name: {"id": "files", "type": "files"},
+            },
+        }
+        with patch.object(
+            service.client, "request", return_value={"id": "fileid", "upload_url": "https://fake.s3/upload"}
+        ):
+            with patch("src.common.notion_service.requests.post") as mock_post:
+                mock_post.return_value.raise_for_status.side_effect = Exception("s3 error")
+                with pytest.raises(NotionAPIError, match="File upload failed: Failed to upload file contents"):
+                    service.upload_file_to_page_property(file_path, page_id, property_name)

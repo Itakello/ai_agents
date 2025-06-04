@@ -8,7 +8,6 @@ from src.common.notion_service import NotionService
 from src.core.config import Settings
 from src.core.logger import logger
 from src.metadata_extraction.extractor_service import ExtractorService
-from src.metadata_extraction.schema_utils import convert_openai_response_to_notion_update
 from src.resume_tailoring.latex_service import LatexService
 from src.resume_tailoring.pdf_compiler import PDFCompiler
 from src.resume_tailoring.tailor_service import TailorService
@@ -105,14 +104,11 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> None
         logger.error(f"Extraction failed: {str(e)}")
         sys.exit(1)
 
-    # Convert extracted metadata to Notion format
-    notion_update = convert_openai_response_to_notion_update(extracted_metadata, database_schema)
-
     # Save to Notion
     try:
         notion_service.save_or_update_extracted_data(
             args.job_url,
-            notion_update,
+            extracted_metadata,
         )
         logger.success(f"Saved/updated job metadata for URL: {args.job_url}")
     except Exception as e:
@@ -215,7 +211,7 @@ def main() -> None:
         logger.info("Job Finder Assistant starting...")
         logger.debug(f"Current LOG_LEVEL: {settings.LOG_LEVEL}")
 
-        # Parse command line arguments with settings default model
+        # Parse command line arguments with settings default model5
         args = parse_arguments(default_model=settings.DEFAULT_MODEL_NAME)
 
         # Handle different commands

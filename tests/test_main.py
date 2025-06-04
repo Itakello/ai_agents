@@ -49,14 +49,12 @@ class TestMain:
     @patch("src.main.NotionService")
     @patch("src.main.OpenAIClient")
     @patch("src.main.Settings")
-    @patch("src.main.convert_openai_response_to_notion_update")
     @patch("src.main.display_results")
     @patch("src.main.parse_arguments")
     def test_main_successful_execution(
         self,
         mock_parse_arguments: MagicMock,
         mock_display_results: MagicMock,
-        mock_convert: MagicMock,
         mock_settings: MagicMock,
         mock_openai_client: MagicMock,
         mock_notion_service: MagicMock,
@@ -98,15 +96,6 @@ class TestMain:
         mock_extractor_service_instance.extract_metadata_from_job_url.return_value = mock_extracted_metadata
         mock_extractor_service.return_value = mock_extractor_service_instance
 
-        mock_notion_update = {
-            "properties": {
-                "job_title": {"rich_text": [{"text": {"content": "Software Engineer"}}]},
-                "company": {"rich_text": [{"text": {"content": "Tech Corp"}}]},
-                "salary": {"number": 100000.0},
-            }
-        }
-        mock_convert.return_value = mock_notion_update
-
         # Execute main function
         main()
 
@@ -122,7 +111,6 @@ class TestMain:
             mock_database_schema,
             "gpt-4o",
         )
-        mock_convert.assert_called_once_with(mock_extracted_metadata, mock_database_schema)
         mock_display_results.assert_called_once_with(mock_extracted_metadata)
 
     @patch("src.main.Settings", autospec=True)

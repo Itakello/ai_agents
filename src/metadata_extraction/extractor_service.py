@@ -108,16 +108,6 @@ class ExtractorService:
             openai_schema=openai_schema,
         )
 
-        # Print the inserted metadata (mimic display_results style)
-        print("\n📊 EXTRACTED METADATA:")
-        print("-" * 40)
-        for key, value in metadata.items():
-            if isinstance(value, list):
-                value_str = ", ".join(str(v) for v in value)
-            else:
-                value_str = str(value)
-            print(f"{key}: {value_str}")
-
         return metadata
 
     def _crawl_markdown(self, job_url: str) -> str:
