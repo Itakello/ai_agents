@@ -1,6 +1,5 @@
 import argparse
 import sys
-from pathlib import Path
 from typing import Any
 
 from src.common.llm_clients import OpenAIClient
@@ -31,8 +30,7 @@ def parse_arguments(default_model: str) -> argparse.Namespace:
   python src/main.py extract https://linkedin.com/jobs/view/123456 --model gpt-4o-mini
 
   # Tailor resume for a specific job
-  python src/main.py tailor-resume --job-id abc123 --output-stem company-role
-  python src/main.py tailor-resume --job-id abc123 --output-stem company-role --diff
+  python src/main.py tailor-resume --job-url https://example.com/job-posting
         """,
     )
 
@@ -55,8 +53,9 @@ def parse_arguments(default_model: str) -> argparse.Namespace:
 
     # Tailor resume command
     tailor_parser = subparsers.add_parser("tailor-resume", help="Tailor resume for a specific job")
-    tailor_parser.add_argument("--job-id", required=True, help="Job ID (matches the 'ID' property in Notion DB)")
-    tailor_parser.add_argument("--output-stem", required=True, help="Output filename stem for generated files")
+    tailor_parser.add_argument(
+        "--job-url", required=True, help="Job posting URL (matches the URL property in Notion DB)"
+    )
 
     return parser.parse_args()
 
@@ -132,21 +131,16 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
         notion_service=notion_service,
     )
 
-    job_id = args.job_id
-    output_stem = args.output_stem
-
-    # Fetch job metadata and markdown from Notion
     try:
-        logger.info("Fetching job information from Notion using job_id...")
-        page_content = notion_service.find_page_by_job_id(job_id)
-        if not page_content:
-            logger.error(f"No Notion page found for job_id: {job_id}")
-            sys.exit(1)
+        # Fetch job metadata from Notion by job URL
+        job_metadata = notion_service.find_page_by_url(args.job_url)
 
-        job_metadata = {}
         markdown_content = None
-        if "properties" in page_content:
-            for prop_name, prop_value in page_content["properties"].items():
+        if not job_metadata:
+            logger.error(f"No job found in Notion database with URL: {args.job_url}")
+            sys.exit(1)
+        if "properties" in job_metadata:
+            for prop_name, prop_value in job_metadata["properties"].items():
                 if prop_value.get("type") == "title":
                     title_texts = prop_value.get("title", [])
                     if title_texts:
@@ -173,30 +167,28 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
                         job_metadata[prop_name] = url_value
 
         if not markdown_content:
-            logger.error("No job description found in Notion for this job_id")
+            logger.error(f"No job description found in Notion for this job URL: {args.job_url}")
             sys.exit(1)
 
         # Read master resume content
         logger.info("Reading master resume content...")
-        master_resume_path = Path(settings.MASTER_RESUME_PATH)
+        master_resume_path = settings.MASTER_RESUME_PATH
+
         if not master_resume_path.exists():
             logger.error(f"Master resume file not found: {master_resume_path}")
             sys.exit(1)
 
-        master_resume_content = master_resume_path.read_text(encoding="utf-8")
+        master_resume_tex_content = master_resume_path.read_text(encoding="utf-8")
 
         # Call tailor service
         logger.info("Tailoring resume...")
         tailor_service.tailor_resume(
             job_metadata=job_metadata,
-            master_resume_tex_content=master_resume_content,
+            master_resume_tex_content=master_resume_tex_content,
             notion_page_id=settings.NOTION_DATABASE_ID,
-            output_filename_stem=output_stem,
         )
 
         logger.success("Resume tailoring completed successfully!")
-        logger.info(f"Tailored resume saved with stem: {output_stem}")
-        logger.info(f"Diff PDF generated with stem: {output_stem}")
 
     except Exception as e:
         logger.error(f"Error during resume tailoring: {str(e)}")

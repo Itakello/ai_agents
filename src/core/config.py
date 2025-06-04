@@ -53,12 +53,10 @@ class Settings(BaseSettings):
     OPENAI_MAX_RETRIES: int = 3
     OPENAI_TIMEOUT_SECONDS: int = 30
 
-    # Notion property names constants
-    JOB_DESCRIPTION_MARKDOWN_PROPERTY: str = "Job Description Markdown"
+    # Notion special properties
     JOB_URL_PROPERTY_NAME: str = "Job URL"
-
-    # Default CLI settings
-    DEFAULT_EXPORT_PDF_DIR: str = "exported_pdfs"
+    TAILORED_RESUME_PROPERTY_NAME: str = "Tailored Resume"
+    TAILORED_RESUME_DIFF_PROPERTY_NAME: str = "Tailored Resume Diff"
 
     # Crawl4AI settings
     CRAWL4AI_HEADLESS: bool = True
@@ -87,7 +85,6 @@ class Settings(BaseSettings):
     # File paths and directories
     PROMPTS_DIRECTORY: Path = Path("prompts")
     EXTRACT_METADATA: str = "extract_metadata.txt"
-    TEMP_DIRECTORY: Path = Path("tmp")
 
     # Performance and reliability settings
     API_KEY_MIN_LENGTH: int = 10
@@ -97,7 +94,8 @@ class Settings(BaseSettings):
     MAX_OUTPUT_FILES_TO_KEEP: int = 100
 
     # File Names
-    JOB_DESCRIPTION_MARKDOWN_FILENAME: str = "jd_markdown"
+    TAILORED_RESUME_STEM: str = "tailored_resume"
+    TAILORED_RESUME_DIFF_STEM: str = "tailored_resume_diff"
 
     @field_validator("OPENAI_API_KEY", "NOTION_API_KEY")
     @classmethod
