@@ -23,7 +23,7 @@ Return **only** valid JSON that passes the following JSON-Schema **exactly** (no
      – bullet and numbered lists,
      – comma-separated phrases,
      – ad-hoc mentions anywhere else.
-   - Canonicalise obvious synonyms (e.g. "Node.js" = "Node", "PostgreSQL" = "Postgres").
+   - Canonicalize obvious synonyms (e.g. "Node.js" = "Node", "PostgreSQL" = "Postgres").
 3. Deduplicate each array, preserving case & spelling as in the posting.
 4. For missing properties use `null`.
 5. Copy the condensed, deduped values into the **output JSON object** that matches the schema.
