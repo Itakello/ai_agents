@@ -357,60 +357,6 @@ class TestNotionService:
         assert query_args[1]["filter"]["property"] == "Job URL"
         assert result == {"id": "new_page_id"}
 
-    def test_upload_file_to_page_property_url(self, mock_client: MagicMock, tmp_path: Path) -> None:
-        """Test upload_file_to_page_property stores local file path in a URL property."""
-
-        api_key = "test_api_key"
-        database_id = "test_database_id"
-        page_id = "test_page_id"
-        property_name = "Resume PDF"
-        file_path = tmp_path / "test_resume.pdf"
-        file_path.write_text("dummy content")
-        # Mock schema with URL property
-        service = NotionService(api_key=api_key, database_id=database_id)
-        mock_instance = mock_client.return_value
-        mock_instance.databases.retrieve.return_value = {
-            "object": "database",
-            "id": database_id,
-            "properties": {
-                property_name: {"id": "url", "type": "url"},
-            },
-        }
-        # Act
-        result = service.upload_file_to_page_property(file_path, page_id, property_name)
-        # Assert
-        mock_instance.pages.update.assert_called_once_with(
-            page_id=page_id, properties={property_name: {"url": str(file_path)}}
-        )
-        assert result == str(file_path)
-
-    def test_upload_file_to_page_property_rich_text(self, mock_client: MagicMock, tmp_path: Path) -> None:
-        """Test upload_file_to_page_property stores local file path in a rich_text property."""
-
-        api_key = "test_api_key"
-        database_id = "test_database_id"
-        page_id = "test_page_id"
-        property_name = "Resume Path"
-        file_path = tmp_path / "test_resume.pdf"
-        file_path.write_text("dummy content")
-        # Mock schema with rich_text property
-        service = NotionService(api_key=api_key, database_id=database_id)
-        mock_instance = mock_client.return_value
-        mock_instance.databases.retrieve.return_value = {
-            "object": "database",
-            "id": database_id,
-            "properties": {
-                property_name: {"id": "rt", "type": "rich_text"},
-            },
-        }
-        # Act
-        result = service.upload_file_to_page_property(file_path, page_id, property_name)
-        # Assert
-        mock_instance.pages.update.assert_called_once_with(
-            page_id=page_id, properties={property_name: {"rich_text": [{"text": {"content": str(file_path)}}]}}
-        )
-        assert result == str(file_path)
-
     def test_upload_file_to_page_property_handles_error(self, mock_client: MagicMock, tmp_path: Path) -> None:
         """Test upload_file_to_page_property returns None on error."""
 

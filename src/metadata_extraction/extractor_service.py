@@ -7,6 +7,9 @@ Notion database schemas.
 """
 
 import asyncio
+import os
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler  # type: ignore
@@ -144,15 +147,29 @@ class ExtractorService:
             markdown_content = self._crawl_markdown(job_url)
             if not page_id:
                 # If page does not exist, create it with at least the URL and file property
-                url_prop = get_settings().JOB_URL_PROPERTY_NAME
-                properties = {
-                    (url_prop or "URL"): {"url": job_url},
-                    markdown_prop_name: {"files": []},
-                }
+                url_prop = settings.JOB_URL_PROPERTY_NAME
+                properties = {url_prop: {"url": job_url}}
                 page = self.notion_service.create_page(properties)
                 page_id = str(page.get("id"))
-            # Upload markdown to Notion files property
-            self.notion_service.upload_file_to_page_property(page_id, markdown_prop_name, markdown_content)
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                path = Path(tmpdir) / (settings.JOB_DESCRIPTION_MARKDOWN_FILENAME + ".md")
+                path.write_text(markdown_content)
+                self.notion_service.upload_file_to_page_property(path, page_id, markdown_prop_name)
+
+            # Upload markdown to Notion files property by creating a temp file
+            temp_file = tempfile.NamedTemporaryFile(
+                delete=False, prefix=settings.JOB_DESCRIPTION_MARKDOWN_FILENAME, suffix=".md"
+            )
+            try:
+                temp_file.write(markdown_content.encode("utf-8"))
+                temp_file.close()
+                self.notion_service.upload_file_to_page_property(temp_file.name, page_id, markdown_prop_name)
+            finally:
+                try:
+                    os.remove(temp_file.name)
+                except Exception as e:
+                    print(f"Warning: Temporary file {temp_file.name} could not be removed: {e}")
 
         return str(page_id), markdown_content
 

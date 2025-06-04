@@ -5,6 +5,7 @@ This module contains the NotionService class which handles communication with th
 including fetching page content and updating page properties.
 """
 
+import mimetypes
 from pathlib import Path
 from typing import Any
 
@@ -314,8 +315,6 @@ class NotionService:
         Raises:
             NotionAPIError: If the upload fails or property type is not 'files'.
         """
-        import mimetypes
-        from pathlib import Path
 
         file_path = Path(file_path)
         if not file_path.exists() or not file_path.is_file():
@@ -325,12 +324,6 @@ class NotionService:
         prop_schema = schema.get(property_name, {})
         prop_type = prop_schema.get("type")
 
-        if prop_type == "url":
-            self.update_page_property(page_id, property_name, {"url": str(file_path)})
-            return str(file_path)
-        if prop_type == "rich_text":
-            self.update_page_property(page_id, property_name, {"rich_text": [{"text": {"content": str(file_path)}}]})
-            return str(file_path)
         if prop_type != "files":
             raise NotionAPIError(
                 f"Property '{property_name}' is of type '{prop_type}'. "

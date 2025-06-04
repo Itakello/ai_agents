@@ -96,6 +96,9 @@ class Settings(BaseSettings):
     REQUEST_BACKOFF_MULTIPLIER: float = 2.0
     MAX_OUTPUT_FILES_TO_KEEP: int = 100
 
+    # File Names
+    JOB_DESCRIPTION_MARKDOWN_FILENAME: str = "jd_markdown"
+
     @field_validator("OPENAI_API_KEY", "NOTION_API_KEY")
     @classmethod
     def validate_api_keys(cls, v: str) -> str:
