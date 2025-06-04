@@ -184,24 +184,6 @@ class URLCache:
             "--variable",
             f"linestretch={settings.PDF_LINE_STRETCH}",
         ]
-        settings = get_settings()
-
-        font_args = [
-            "--variable",
-            f"mainfont={settings.PDF_MAIN_FONT}",
-            "--variable",
-            f"sansfont={settings.PDF_SANS_FONT}",
-            "--variable",
-            f"monofont={settings.PDF_MONO_FONT}",
-        ]
-        base_args = [
-            "--variable",
-            f"geometry:margin={settings.PDF_MARGIN}",
-            "--variable",
-            f"fontsize={settings.PDF_FONT_SIZE}",
-            "--variable",
-            f"linestretch={settings.PDF_LINE_STRETCH}",
-        ]
         try:
             # Try primary PDF engine first
             pypandoc.convert_text(
