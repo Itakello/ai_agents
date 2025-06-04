@@ -144,8 +144,7 @@ class ExtractorService:
             markdown_content = self._crawl_markdown(job_url)
             if not page_id:
                 # If page does not exist, create it with at least the URL and file property
-                schema = self.notion_service.get_database_schema()
-                url_prop = self.notion_service._find_url_property_name(schema)
+                url_prop = get_settings().JOB_URL_PROPERTY_NAME
                 properties = {
                     (url_prop or "URL"): {"url": job_url},
                     markdown_prop_name: {"files": []},

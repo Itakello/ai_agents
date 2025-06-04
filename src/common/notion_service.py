@@ -11,6 +11,8 @@ from typing import Any
 import requests
 from notion_client import Client as NotionClient
 
+from src.core.config import get_settings
+
 
 class NotionAPIError(Exception):
     """Custom exception for Notion API errors."""
@@ -164,8 +166,7 @@ class NotionService:
             NotionAPIError: If there's an error querying the database.
         """
         try:
-            schema = self.get_database_schema()
-            url_property = url_property_name or self._find_url_property_name(schema)
+            url_property = url_property_name or get_settings().JOB_URL_PROPERTY_NAME
             if not url_property:
                 raise NotionAPIError("Could not determine URL property name in Notion database schema.")
             result = self.client.databases.query(
@@ -199,9 +200,7 @@ class NotionService:
         except Exception as e:
             raise NotionAPIError(f"Failed to create page: {str(e)}") from e
 
-    def save_or_update_extracted_data(
-        self, url: str, extracted_data: dict[str, Any], url_property_name: str | None = None
-    ) -> dict[str, Any]:
+    def save_or_update_extracted_data(self, url: str, extracted_data: dict[str, Any]) -> dict[str, Any]:
         """
         Save extracted data to Notion database, updating existing page if URL already exists.
         Always stores markdown content as a rich_text property.
@@ -218,17 +217,10 @@ class NotionService:
         """
         try:
             database_schema = self.get_database_schema()
-            url_property = url_property_name or self._find_url_property_name(database_schema)
-            if not url_property:
-                raise NotionAPIError("Could not determine URL property name in Notion database schema.")
-            # Ensure markdown is present and stored as a rich_text property
-            if "Job Description Markdown" in extracted_data:
-                markdown_val = extracted_data["Job Description Markdown"]
-                extracted_data["Job Description Markdown"] = markdown_val or ""
             # Check if page with this URL already exists
-            existing_page = self.find_page_by_url(url, url_property)
+            existing_page = self.find_page_by_url(url)
             # Prepare properties for Notion API format
-            properties = self._format_properties_for_notion(extracted_data, url, url_property, database_schema)
+            properties = self._format_properties_for_notion(extracted_data, url, database_schema)
             if existing_page:
                 page_id = existing_page["id"]
                 return self.update_page_properties(page_id, properties)
@@ -238,14 +230,13 @@ class NotionService:
             raise NotionAPIError(f"Failed to save or update data for URL {url}: {str(e)}") from e
 
     def _format_properties_for_notion(
-        self, extracted_data: dict[str, Any], url: str, url_property_name: str, database_schema: dict[str, Any]
+        self, extracted_data: dict[str, Any], url: str, database_schema: dict[str, Any]
     ) -> dict[str, Any]:
         """Format extracted data into Notion property format based on database schema.
 
         Args:
             extracted_data: The structured data extracted from the URL.
             url: The URL that was processed.
-            url_property_name: The name of the URL property in the database.
             database_schema: The database schema from Notion to understand property types.
 
         Returns:
@@ -253,14 +244,8 @@ class NotionService:
         """
         properties: dict[str, Any] = {}
 
-        # Always include the URL
-        properties[url_property_name] = {"url": url}
-
         # Format other extracted properties based on database schema and value type
         for key, value in extracted_data.items():
-            if key == url_property_name:
-                continue  # Skip if it's the URL property
-
             # Get the property configuration from database schema
             property_config = database_schema.get(key, {})
             property_type = property_config.get("type", "rich_text")
@@ -308,46 +293,6 @@ class NotionService:
                 properties[key] = {"rich_text": [{"text": {"content": str(value)}}]}
 
         return properties
-
-    def _find_url_property_name(self, database_schema: dict[str, Any]) -> str | None:
-        """Find the URL property name in the database schema.
-
-        Args:
-            database_schema: The database schema from Notion.
-
-        Returns:
-            The name of the URL property if found, None otherwise.
-        """
-        # First, look for properties with type 'url'
-        for property_name, property_config in database_schema.items():
-            if property_config.get("type") == "url":
-                return property_name
-
-        # If no URL type found, look for common URL property names
-        common_url_names = [
-            "URL",
-            "url",
-            "Job URL",
-            "Job url",
-            "Link",
-            "Job Link",
-            "Posting URL",
-            "Application URL",
-            "Source",
-        ]
-
-        for property_name in database_schema.keys():
-            for common_name in common_url_names:
-                if property_name.lower() == common_name.lower():
-                    return property_name
-
-        # If still not found, check for properties containing 'url' or 'link' in the name
-        for property_name in database_schema.keys():
-            property_name_lower = property_name.lower()
-            if "url" in property_name_lower or "link" in property_name_lower or "website" in property_name_lower:
-                return property_name
-
-        return None
 
     def upload_file_to_page_property(
         self,

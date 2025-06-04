@@ -53,8 +53,9 @@ class Settings(BaseSettings):
     OPENAI_MAX_RETRIES: int = 3
     OPENAI_TIMEOUT_SECONDS: int = 30
 
-    # Notion property name for job description markdown
+    # Notion property names constants
     JOB_DESCRIPTION_MARKDOWN_PROPERTY: str = "Job Description Markdown"
+    JOB_URL_PROPERTY_NAME: str = "Job URL"
 
     # Default CLI settings
     DEFAULT_EXPORT_PDF_DIR: str = "exported_pdfs"

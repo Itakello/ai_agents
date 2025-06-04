@@ -1,8 +1,10 @@
 """Tests for the NotionService class."""
 
+import os
 from collections.abc import Generator
 from pathlib import Path  # Moved import here
 from typing import Any
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,6 +14,18 @@ from src.common.notion_service import NotionAPIError, NotionService
 
 class TestNotionService:
     """Test suite for the NotionService class."""
+
+    @pytest.fixture(autouse=True)
+    def mock_environment(self) -> Generator:
+        """Mock environment variables required for testing."""
+        env_vars = {
+            "OPENAI_API_KEY": "test_openai_key",
+            "NOTION_API_KEY": "test_notion_key",
+            "NOTION_DATABASE_ID": "test_database_id",
+            "MASTER_RESUME_PATH": "/fake/path/to/resume.tex",
+        }
+        with mock.patch.dict(os.environ, env_vars):
+            yield
 
     @pytest.fixture
     def mock_client(self) -> Generator[MagicMock]:
@@ -305,46 +319,6 @@ class TestNotionService:
             service.update_page_properties(page_id, properties_update)
         assert f"Failed to update properties on page {page_id}:" in str(exc_info.value)
 
-    def test_find_url_property_name_auto_detection(self, mock_client: MagicMock) -> None:
-        """Test auto-detection of URL property name."""
-        # Arrange
-        api_key = "test_api_key"
-        database_id = "test_database_id"
-        service = NotionService(api_key=api_key, database_id=database_id)
-
-        # Test with schema that has "Company Website" as URL property
-        schema_with_company_website = {
-            "Job Title": {"id": "title", "type": "title"},
-            "Company Website": {"id": "url", "type": "url"},
-            "Status": {"id": "stat", "type": "select"},
-        }
-
-        # Act
-        result = service._find_url_property_name(schema_with_company_website)
-
-        # Assert
-        assert result == "Company Website"
-
-    def test_find_url_property_name_no_url_property(self, mock_client: MagicMock) -> None:
-        """Test when no URL property exists in schema."""
-        # Arrange
-        api_key = "test_api_key"
-        database_id = "test_database_id"
-        service = NotionService(api_key=api_key, database_id=database_id)
-
-        # Test with schema that has no URL properties
-        schema_without_url = {
-            "Job Title": {"id": "title", "type": "title"},
-            "Company": {"id": "comp", "type": "rich_text"},
-            "Status": {"id": "stat", "type": "select"},
-        }
-
-        # Act
-        result = service._find_url_property_name(schema_without_url)
-
-        # Assert
-        assert result is None
-
     def test_save_or_update_extracted_data_auto_detects_url_property(self, mock_client: MagicMock) -> None:
         """Test that save_or_update_extracted_data auto-detects URL property name."""
         # Arrange
@@ -380,7 +354,7 @@ class TestNotionService:
         # Verify that query was called with the correct URL property name
         mock_instance.databases.query.assert_called_once()
         query_args = mock_instance.databases.query.call_args
-        assert query_args[1]["filter"]["property"] == "Company Website"
+        assert query_args[1]["filter"]["property"] == "Job URL"
         assert result == {"id": "new_page_id"}
 
     def test_upload_file_to_page_property_url(self, mock_client: MagicMock, tmp_path: Path) -> None:
