@@ -10,7 +10,7 @@ You will be provided with:
 Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when applied, transform the MASTER résumé into a version laser-focused on the target job.
 
 ### REQUIREMENTS
-- Replace the `|professional_title|` placeholder with the target job title. For example, if the job title is 'Software Engineer', the diff should search for `|professional_title|` and replace it with `|Software Engineer|`.
+- Replace the `|professional\_title|` placeholder with the target job title. For example, if the job title is 'Software Engineer', the diff should search for `|professional\_title|` and replace it with `|Software Engineer|`.
 - Reduce the summary to a maximum of 3 sentences.
 - Make the tailored resume comprehensive, cohesive, and highlight the best and most relevant skills, experiences, and projects for this job.
 - Keep the PDF length to **1 page**.
