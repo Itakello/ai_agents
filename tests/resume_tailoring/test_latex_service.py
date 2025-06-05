@@ -45,6 +45,11 @@ def test_compile_resume(tmp_path: Path) -> None:
     service = LatexService(DummyPDFCompiler(), settings)  # type: ignore[arg-type]
     tex_path = tmp_path / "resume2.tex"
     tex_path.write_text("\\documentclass{article}\\begin{document}Test\\end{document}")
+    # Create the dummy PDF file at the expected output location
+    build_dir = tmp_path / "latex_build"
+    build_dir.mkdir(exist_ok=True)
+    dummy_pdf_path = build_dir / "resume2.pdf"
+    dummy_pdf_path.write_bytes(b"%PDF-1.4 dummy content")
     pdf_path = service.compile_resume(tex_path)
     assert pdf_path == tex_path.parent / "resume2.pdf"
 

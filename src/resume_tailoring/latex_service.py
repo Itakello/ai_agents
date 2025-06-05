@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from shutil import copy2
 
 from src.common.utils import write_file_content
 from src.core.config import Settings
@@ -23,8 +24,20 @@ class LatexService:
         return tex_path
 
     def compile_resume(self, tex_file_path: Path) -> Path:
-        output_dir = tex_file_path.parent
-        return self.pdf_compiler.compile_tex_to_pdf(tex_file_path, output_dir)
+        """
+        Compile a .tex file to PDF using a temporary latex_build/ directory for all pdflatex outputs.
+        Only the PDF is copied to the tex_file_path's parent directory; auxiliary files remain in latex_build/.
+        """
+
+        # Use latex_build/ in the codebase for aux files
+        build_dir = tex_file_path.parent / "latex_build"
+        build_dir.mkdir(exist_ok=True)
+        pdf_path = self.pdf_compiler.compile_tex_to_pdf(tex_file_path, build_dir)
+
+        # Move only the PDF to the output dir (where the .tex file is)
+        output_pdf = tex_file_path.parent / pdf_path.name
+        copy2(pdf_path, output_pdf)
+        return output_pdf
 
     def run_latexdiff(
         self,

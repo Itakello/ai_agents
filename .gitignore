@@ -73,6 +73,7 @@ Thumbs.db
 
 # Output files
 out/
+latex_build/
 
 # Input files
 data/**
