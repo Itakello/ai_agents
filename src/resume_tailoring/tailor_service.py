@@ -84,8 +84,6 @@ class TailorService:
             target_output_dir = base_output_dir
         else:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            # Ensure notion_page_id is a string and doesn't contain problematic characters for a path
-            # Notion page IDs are typically UUIDs without hyphens, which are safe for path names.
             safe_page_id = str(notion_page_id).replace("-", "")
             target_output_dir = base_output_dir / "runs" / f"{timestamp}_{safe_page_id}"
 

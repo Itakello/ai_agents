@@ -160,7 +160,7 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
         tailor_service.tailor_resume(
             job_metadata=job_metadata,
             master_resume_tex_content=master_resume_tex_content,
-            notion_page_id=settings.NOTION_DATABASE_ID,
+            notion_page_id=job_metadata["id"],
         )
 
         logger.success("Resume tailoring completed successfully!")
