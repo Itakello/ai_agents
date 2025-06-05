@@ -54,8 +54,7 @@ class Settings(BaseSettings):
 
     # Notion special properties
     JOB_URL_PROPERTY_NAME: str = "Job URL"
-    TAILORED_RESUME_PROPERTY_NAME: str = "Tailored Resume"
-    TAILORED_RESUME_DIFF_PROPERTY_NAME: str = "Tailored Resume Diff"
+    TAILORED_RESUME_PROPERTY_NAME: str = "Resume"
 
     # Crawl4AI settings
     CRAWL4AI_HEADLESS: bool = True

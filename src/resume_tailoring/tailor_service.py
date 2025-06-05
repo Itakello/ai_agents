@@ -129,7 +129,7 @@ class TailorService:
                 self.notion_service.upload_file_to_page_property(
                     file_path=compiled_diff_pdf_path,
                     page_id=notion_page_id,
-                    property_name=settings.TAILORED_RESUME_DIFF_PROPERTY_NAME,
+                    property_name=settings.TAILORED_RESUME_PROPERTY_NAME,
                 )
             else:
                 # Log an error or handle if diff PDF compilation failed
