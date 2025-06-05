@@ -37,6 +37,17 @@ class LatexService:
         diff_tex_path = target_directory / f"{diff_output_stem}.tex"
         cmd = [
             self.settings.LATEXDIFF_COMMAND,
+            "--type=WORD",
+            "-t",
+            "UNDERLINE",
+            "--append-textcmd=introduction",
+            "--append-textcmd=resumeItem",
+            "--append-textcmd=resumeItemListStart",
+            "--append-textcmd=resumeItemListEnd",
+            "--append-textcmd=resumeSubheading",
+            "--append-textcmd=resumeSubHeadingListStart",
+            "--append-textcmd=resumeSubHeadingListEnd",
+            "--append-textcmd=techSkillsItem",
             str(original_tex_path),
             str(tailored_tex_path),
         ]

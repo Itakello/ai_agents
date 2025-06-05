@@ -23,7 +23,7 @@ def test_compile_tex_to_pdf_success(monkeypatch: pytest.MonkeyPatch, minimal_tex
     output_dir = tmp_path / "output"
     pdf_path = output_dir / "test_resume.pdf"
 
-    def fake_run(cmd: str | list[str], shell: bool, capture_output: bool, cwd: str) -> MagicMock:
+    def fake_run(cmd: str | list[str], shell: bool, capture_output: bool, cwd: str, **kwargs: object) -> MagicMock:
         # Simulate pdflatex success by creating the PDF file
         output_dir.mkdir(exist_ok=True)
         pdf_path.write_bytes(b"%PDF-1.4 fake pdf content")
@@ -46,7 +46,7 @@ def test_compile_tex_to_pdf_success(monkeypatch: pytest.MonkeyPatch, minimal_tex
 def test_compile_tex_to_pdf_failure(monkeypatch: pytest.MonkeyPatch, minimal_tex_file: Path, tmp_path: Path) -> None:
     output_dir = tmp_path / "output"
 
-    def fake_run(cmd: str, shell: bool, capture_output: bool, cwd: str) -> MagicMock:
+    def fake_run(cmd: str, shell: bool, capture_output: bool, cwd: str, **kwargs: object) -> MagicMock:
         mock_result = MagicMock()
         mock_result.returncode = 1
         return mock_result
@@ -64,7 +64,7 @@ def test_compile_tex_to_pdf_with_command_template(
     output_dir = tmp_path / "output"
     pdf_path = output_dir / "test_resume.pdf"
 
-    def fake_run(cmd: str | list[str], shell: bool, capture_output: bool, cwd: str) -> MagicMock:
+    def fake_run(cmd: str | list[str], shell: bool, capture_output: bool, cwd: str, **kwargs: object) -> MagicMock:
         output_dir.mkdir(exist_ok=True)
         pdf_path.write_bytes(b"%PDF-1.4 fake pdf content")
         mock_result = MagicMock()

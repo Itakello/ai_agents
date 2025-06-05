@@ -10,12 +10,13 @@ You will be provided with:
 Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when applied, transform the MASTER résumé into a version laser-focused on the target job.
 
 ### REQUIREMENTS
-- Add the job position at the very top of the resume.
-- Reduce the summary to a 3-sentences max summary
+- Replace the `|professional_title|` placeholder with the target job title. For example, if the job title is 'Software Engineer', the diff should search for `|professional_title|` and replace it with `|Software Engineer|`.
+- Reduce the summary to a maximum of 3 sentences.
 - Make the tailored resume comprehensive, cohesive, and highlight the best and most relevant skills, experiences, and projects for this job.
 - Keep the PDF length to **1 page**.
 - Never invent or exaggerate experience; only rephrase, reorder, or selectively remove content.
 - Critically, **never** add skills that are not explicitly present in the MASTER résumé. Only rephrase, reorder, or selectively remove existing skills.
+- Project details (titles, tools, and dates) within the `\resumeProjectHeading` command must remain unchanged. Do not modify these elements.
 - Only output the diff – no commentary, no explanations, no summaries, no LaTeX source, and no JSON.
 
 ### Output Format

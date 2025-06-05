@@ -2,6 +2,8 @@ import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 
+from src.core.logger import logger
+
 
 class PDFCompilationError(Exception):
     """Raised when PDF compilation from LaTeX fails."""
@@ -47,24 +49,64 @@ class PDFCompiler:
 
         # Prepare command
         if self.command_template:
-            cmd: str | list[str] = self.command_template.replace("%OUTDIR%", str(output_directory)).replace(
+            cmd_str: str = self.command_template.replace("%OUTDIR%", str(output_directory)).replace(
                 "%DOC%", str(tex_file_path)
             )
+            cmd_to_run: str | list[str] = cmd_str
             shell = True
         else:
             args = [
                 arg.replace("%OUTDIR%", str(output_directory)).replace("%DOC%", str(tex_file_path))
                 for arg in self.pdflatex_args
             ]
-            cmd = [self.pdflatex_cmd] + args
+            cmd_to_run = [self.pdflatex_cmd] + args
             shell = False
-        for _ in range(2):
-            cmd_to_run = cmd
-            if shell and isinstance(cmd, list):
-                cmd_to_run = " ".join(cmd)
-            result = subprocess.run(cmd_to_run, shell=shell, capture_output=True, cwd=tex_file_path.parent)
+
+        last_stdout = ""
+        last_stderr = ""
+
+        for i in range(2):  # Run up to 2 times for cross-referencing
+            current_cmd_to_run = cmd_to_run
+            if shell and isinstance(current_cmd_to_run, list):  # Ensure command is a string if shell=True
+                current_cmd_to_run = " ".join(current_cmd_to_run)
+
+            logger.info(
+                f"Running pdflatex (attempt {i + 1}/2): {' '.join(current_cmd_to_run) if isinstance(current_cmd_to_run, list) else current_cmd_to_run}"
+            )
+            result = subprocess.run(
+                current_cmd_to_run,
+                shell=shell,
+                capture_output=True,
+                text=True,  # Decode stdout/stderr as text
+                cwd=tex_file_path.parent,
+            )
+
+            last_stdout = result.stdout
+            last_stderr = result.stderr
+
             if result.returncode != 0:
-                break
+                error_message = (
+                    f"Failed to compile {tex_file_path} to PDF on attempt {i + 1}.\n"
+                    f"Return code: {result.returncode}\n"
+                    f"Working directory: {tex_file_path.parent}\n"
+                    f"Command: {' '.join(current_cmd_to_run) if isinstance(current_cmd_to_run, list) else current_cmd_to_run}\n"
+                    f"STDOUT:\n{result.stdout}\n"
+                    f"STDERR:\n{result.stderr}"
+                )
+                logger.error(error_message)
+                raise PDFCompilationError(error_message)
+
         if pdf_path.exists():
+            logger.info(f"Successfully compiled {tex_file_path} to {pdf_path}")
             return pdf_path
-        raise PDFCompilationError(f"Failed to compile {tex_file_path} to PDF")
+
+        # This case should ideally be caught by the returncode check, but as a fallback:
+        fallback_error_message = (
+            f"Failed to compile {tex_file_path} to PDF. PDF not found after 2 attempts.\n"
+            f"Working directory: {tex_file_path.parent}\n"
+            f"Command: {' '.join(cmd_to_run) if isinstance(cmd_to_run, list) else cmd_to_run}\n"
+            f"Last STDOUT:\n{last_stdout}\n"
+            f"Last STDERR:\n{last_stderr}"
+        )
+        logger.error(fallback_error_message)
+        raise PDFCompilationError(fallback_error_message)
