@@ -11,15 +11,12 @@ Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when 
 
 ### REQUIREMENTS
 - Add the job position at the very top of the resume.
-- Reduce the summary to a 3-sentences max summary, where I concisely explain:
-    1. Who I am
-    2. Why I’m applying
-    3. A brief, compelling statement
+- Reduce the summary to a 3-sentences max summary
 - Make the tailored resume comprehensive, cohesive, and highlight the best and most relevant skills, experiences, and projects for this job.
 - Keep the PDF length to **1 page**.
 - Never invent or exaggerate experience; only rephrase, reorder, or selectively remove content.
+- Critically, **never** add skills that are not explicitly present in the MASTER résumé. Only rephrase, reorder, or selectively remove existing skills.
 - Only output the diff – no commentary, no explanations, no summaries, no LaTeX source, and no JSON.
-- If no changes are needed, output nothing.
 
 ### Output Format
 Return **only** valid diff blocks in the following format (no commentary, no extra text):
