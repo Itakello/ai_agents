@@ -37,7 +37,6 @@ class TestSettings:
             "PDFLATEX_COMMAND",
             "LATEXDIFF_COMMAND",
             "DEFAULT_MODEL_NAME",
-            "DEFAULT_OUTPUT_DIR",
             "TEST_NOTION_PAGE_ID",
         ]:
             monkeypatch.delenv(key, raising=False)
@@ -48,7 +47,6 @@ class TestSettings:
             "PDFLATEX_COMMAND",
             "LATEXDIFF_COMMAND",
             "DEFAULT_MODEL_NAME",
-            "DEFAULT_OUTPUT_DIR",
             "TEST_NOTION_PAGE_ID",
         ]:
             monkeypatch.delenv(key, raising=False)
@@ -110,13 +108,11 @@ class TestSettings:
 
         # Override optional settings via environment variables
         monkeypatch.setenv("DEFAULT_MODEL_NAME", "gpt-4-turbo")
-        monkeypatch.setenv("DEFAULT_OUTPUT_DIR", "custom_output")
 
         # Create settings - should load from env vars
         settings = Settings()  # type: ignore[call-arg]
 
         assert settings.DEFAULT_MODEL_NAME == "gpt-4-turbo"  # From env var
-        assert settings.DEFAULT_OUTPUT_DIR == Path("custom_output")  # From env var
         # Verify default values are set for other optional fields
         assert settings.PDFLATEX_COMMAND == "pdflatex"  # Default value
 
@@ -137,7 +133,6 @@ class TestSettings:
         assert settings.LATEXDIFF_COMMAND == "/custom/path/latexdiff"
         assert settings.TEST_NOTION_PAGE_ID == "test_page_123"
         assert settings.DEFAULT_MODEL_NAME == "gpt-4.1"  # Default value
-        assert settings.DEFAULT_OUTPUT_DIR == Path("output")  # Default value
 
     def test_default_values(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that default values are used when no environment variables are set."""
@@ -153,7 +148,6 @@ class TestSettings:
         assert settings.PDFLATEX_COMMAND == "pdflatex"
         assert settings.LATEXDIFF_COMMAND == "latexdiff"
         assert settings.DEFAULT_MODEL_NAME == "gpt-4.1"
-        assert settings.DEFAULT_OUTPUT_DIR == Path("output")
         assert settings.TEST_NOTION_PAGE_ID is None
 
     def test_api_key_validation(self, monkeypatch: pytest.MonkeyPatch) -> None:

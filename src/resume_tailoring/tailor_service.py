@@ -1,13 +1,13 @@
+import datetime
 import json
 import re
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any
 
+from src.common.llm_clients import OpenAIClient
+from src.common.notion_service import NotionService
 from src.core.config import get_settings
 
-from ..common.llm_clients import OpenAIClient
-from ..common.notion_service import NotionService
 from .latex_service import LatexService
 
 # Regex pattern for diff blocks
@@ -78,37 +78,62 @@ class TailorService:
         # 3. Apply diff using the new apply_diff function
         tailored_tex_content = apply_diff(master_resume_tex_content, llm_response)
 
-        with TemporaryDirectory() as temp_dir:
-            temp_dir_path = Path(temp_dir)
-            tailored_tex_path = temp_dir_path / f"{settings.TAILORED_RESUME_STEM}.tex"
-            diff_tex_path = temp_dir_path / f"{settings.TAILORED_RESUME_DIFF_STEM}.tex"
-            diff_pdf_path = temp_dir_path / f"{settings.TAILORED_RESUME_DIFF_STEM}.pdf"
+        # 4. Determine output directory based on DEV_MODE
+        base_output_dir = settings.BASE_OUTPUT_DIR
+        if settings.DEV_MODE:
+            target_output_dir = base_output_dir
+        else:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            # Ensure notion_page_id is a string and doesn't contain problematic characters for a path
+            # Notion page IDs are typically UUIDs without hyphens, which are safe for path names.
+            safe_page_id = str(notion_page_id).replace("-", "")
+            target_output_dir = base_output_dir / "runs" / f"{timestamp}_{safe_page_id}"
 
-            # Write tailored tex file
-            tailored_tex_path.write_text(tailored_tex_content, encoding="utf-8")
+        target_output_dir.mkdir(parents=True, exist_ok=True)
 
-            # Compile tailored tex to PDF
-            compiled_pdf_path = self.latex_service.compile_resume(tailored_tex_path)
+        # 5. Save tailored resume .tex file using LatexService
+        final_tailored_tex_path = self.latex_service.save_tex_file(
+            content=tailored_tex_content,
+            filename_stem=settings.TAILORED_RESUME_STEM,  # e.g., "tailored_resume"
+            target_directory=target_output_dir,
+        )
 
+        # 6. Compile tailored .tex to .pdf (saved in the same directory as the .tex file)
+        compiled_tailored_pdf_path = self.latex_service.compile_resume(final_tailored_tex_path)
+
+        # 7. Upload tailored PDF to Notion
+        if compiled_tailored_pdf_path and compiled_tailored_pdf_path.exists():
             self.notion_service.upload_file_to_page_property(
-                compiled_pdf_path,
-                notion_page_id,
-                settings.TAILORED_RESUME_PROPERTY_NAME,
+                file_path=compiled_tailored_pdf_path,
+                page_id=notion_page_id,
+                property_name=settings.TAILORED_RESUME_PROPERTY_NAME,
             )
+        else:
+            # Log an error or handle if PDF compilation failed
+            # logger.error(f"Failed to compile tailored PDF for {final_tailored_tex_path}")
+            pass
 
-            # 8. Generate diff and upload diff PDF
-            master_resume_path = Path(settings.MASTER_RESUME_PATH)
-            # Write tailored tex again for diff (if needed)
-            diff_tex_path.write_text(tailored_tex_content, encoding="utf-8")
-            diff_tex_result_path = self.latex_service.run_latexdiff(
-                master_resume_path, diff_tex_path, settings.TAILORED_RESUME_DIFF_STEM, output_subdir=""
-            )
-            if diff_tex_result_path and diff_tex_result_path.exists():
-                # Compile diff tex to PDF
-                compiled_diff_pdf_path = self.latex_service.compile_resume(diff_tex_result_path)
-                if compiled_diff_pdf_path and compiled_diff_pdf_path.exists():
-                    self.notion_service.upload_file_to_page_property(
-                        diff_pdf_path,
-                        notion_page_id,
-                        settings.TAILORED_RESUME_DIFF_PROPERTY_NAME,
-                    )
+        # 8. Generate diff .tex and .pdf, then upload diff PDF to Notion
+        master_resume_path = Path(settings.MASTER_RESUME_PATH)
+
+        diff_tex_result_path = self.latex_service.run_latexdiff(
+            original_tex_path=master_resume_path,
+            tailored_tex_path=final_tailored_tex_path,
+            diff_output_stem=settings.TAILORED_RESUME_DIFF_STEM,  # e.g., "tailored_resume_diff"
+            target_directory=target_output_dir,
+        )
+
+        if diff_tex_result_path and diff_tex_result_path.exists():
+            # Compile diff .tex to .pdf (saved in the same directory as the diff .tex file)
+            compiled_diff_pdf_path = self.latex_service.compile_resume(diff_tex_result_path)
+
+            if compiled_diff_pdf_path and compiled_diff_pdf_path.exists():
+                self.notion_service.upload_file_to_page_property(
+                    file_path=compiled_diff_pdf_path,
+                    page_id=notion_page_id,
+                    property_name=settings.TAILORED_RESUME_DIFF_PROPERTY_NAME,
+                )
+            else:
+                # Log an error or handle if diff PDF compilation failed
+                # logger.error(f"Failed to compile diff PDF for {diff_tex_result_path}")
+                pass

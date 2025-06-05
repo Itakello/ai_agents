@@ -45,7 +45,6 @@ class Settings(BaseSettings):
     PDFLATEX_COMMAND: str = "pdflatex"
     LATEXDIFF_COMMAND: str = "latexdiff"
     DEFAULT_MODEL_NAME: str = "gpt-4.1"
-    DEFAULT_OUTPUT_DIR: Path = Path("output")
     TEST_NOTION_PAGE_ID: str | None = None
 
     # OpenAI API settings
@@ -71,6 +70,9 @@ class Settings(BaseSettings):
     CACHE_TTL_HOURS: int = 24
     CACHE_MAX_ENTRIES: int = 1000
     CACHE_DIRECTORY: Path = Path(".cache")
+
+    # Development settings
+    DEV_MODE: bool = False
 
     # PDF Export settings
     PDF_MAIN_FONT: str = "FiraCode Nerd Font"
@@ -98,6 +100,8 @@ class Settings(BaseSettings):
     # File Names
     TAILORED_RESUME_STEM: str = "tailored_resume"
     TAILORED_RESUME_DIFF_STEM: str = "tailored_resume_diff"
+
+    BASE_OUTPUT_DIR: Path = Path("out")
 
     @field_validator("OPENAI_API_KEY", "NOTION_API_KEY")
     @classmethod
@@ -158,7 +162,6 @@ if __name__ == "__main__":
     print("Configuration loaded successfully:")
     print(f"LOG_LEVEL: {settings.LOG_LEVEL}")
     print(f"DEFAULT_MODEL_NAME: {settings.DEFAULT_MODEL_NAME}")
-    print(f"DEFAULT_OUTPUT_DIR: {settings.DEFAULT_OUTPUT_DIR}")
     print(f"PDFLATEX_COMMAND: {settings.PDFLATEX_COMMAND}")
     print(f"LATEXDIFF_COMMAND: {settings.LATEXDIFF_COMMAND}")
 

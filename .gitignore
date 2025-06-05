@@ -72,4 +72,7 @@ Thumbs.db
 *.cache
 
 # Output files
-outputs/
+out/
+
+# Input files
+data/**

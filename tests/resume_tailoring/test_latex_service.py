@@ -1,3 +1,4 @@
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -26,13 +27,17 @@ def make_settings(tmp_path: Path) -> Settings:
 
 def test_save_tex_file(tmp_path: Path) -> None:
     settings = make_settings(tmp_path)
-    service = LatexService(DummyPDFCompiler(), settings)  # type: ignore[arg-type]
-    content = "\\documentclass{article}\\begin{document}Test\\end{document}"
-    filename_stem = "resume1"
-    tex_path = service.save_tex_file(content, filename_stem)
-    assert tex_path.exists()
-    assert tex_path.read_text() == content
-    assert tex_path.name == "resume1.tex"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        filename = "resume1.tex"
+        file_path = tmp_path / filename
+
+        service = LatexService(DummyPDFCompiler(), settings)  # type: ignore[arg-type]
+        content = "\\documentclass{article}\\begin{document}Test\\end{document}"
+        tex_path = service.save_tex_file(content, file_path.stem, file_path)
+        assert tex_path.exists()
+        assert tex_path.read_text() == content
+        assert tex_path.name == filename
 
 
 def test_compile_resume(tmp_path: Path) -> None:
@@ -49,15 +54,16 @@ def test_run_latexdiff_success(tmp_path: Path) -> None:
     service = LatexService(DummyPDFCompiler(), settings)  # type: ignore[arg-type]
     orig = tmp_path / "orig.tex"
     tailored = tmp_path / "tailored.tex"
+    output_dir = tmp_path / "output"
     orig.write_text("A")
     tailored.write_text("B")
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(stdout="DIFF_CONTENT", returncode=0)
-        diff_path = service.run_latexdiff(orig, tailored, "diff1")
+        diff_path = service.run_latexdiff(orig, tailored, "diff1", output_dir)
         assert diff_path is not None
         assert diff_path.exists()
         assert diff_path.read_text() == "DIFF_CONTENT"
-        assert "diff1_diff.tex" in str(diff_path)
+        assert (output_dir / "diff1.tex") == diff_path
 
 
 def test_run_latexdiff_failure(tmp_path: Path) -> None:
@@ -65,8 +71,9 @@ def test_run_latexdiff_failure(tmp_path: Path) -> None:
     service = LatexService(DummyPDFCompiler(), settings)  # type: ignore[arg-type]
     orig = tmp_path / "orig.tex"
     tailored = tmp_path / "tailored.tex"
+    output_dir = tmp_path / "output"
     orig.write_text("A")
     tailored.write_text("B")
     with patch("subprocess.run", side_effect=Exception("fail")):
-        diff_path = service.run_latexdiff(orig, tailored, "diff2")
+        diff_path = service.run_latexdiff(orig, tailored, "diff2", output_dir)
         assert diff_path is None

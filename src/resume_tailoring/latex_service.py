@@ -15,11 +15,10 @@ class LatexService:
         self,
         content: str,
         filename_stem: str,
-        output_subdir: str = "tailored_resumes",
+        target_directory: Path,
     ) -> Path:
-        output_dir = self.settings.DEFAULT_OUTPUT_DIR / output_subdir
-        output_dir.mkdir(parents=True, exist_ok=True)
-        tex_path = output_dir / f"{filename_stem}.tex"
+        target_directory.mkdir(parents=True, exist_ok=True)
+        tex_path = target_directory / f"{filename_stem}.tex"
         write_file_content(tex_path, content)
         return tex_path
 
@@ -32,11 +31,10 @@ class LatexService:
         original_tex_path: Path,
         tailored_tex_path: Path,
         diff_output_stem: str,
-        output_subdir: str = "resume_diffs",
+        target_directory: Path,
     ) -> Path | None:
-        output_dir = self.settings.DEFAULT_OUTPUT_DIR / output_subdir
-        output_dir.mkdir(parents=True, exist_ok=True)
-        diff_tex_path = output_dir / f"{diff_output_stem}_diff.tex"
+        target_directory.mkdir(parents=True, exist_ok=True)
+        diff_tex_path = target_directory / f"{diff_output_stem}.tex"
         cmd = [
             self.settings.LATEXDIFF_COMMAND,
             str(original_tex_path),
