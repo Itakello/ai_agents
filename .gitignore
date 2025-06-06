@@ -76,4 +76,5 @@ out/
 latex_build/
 
 # Input files
-data/**
+data/master.tex
+data/out
