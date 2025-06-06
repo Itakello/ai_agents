@@ -88,6 +88,16 @@ class Settings(BaseSettings):
     EXTRACT_METADATA: str = "extract_metadata.txt"
     TAILOR_RESUME_SYSTEM_PROMPT_FILENAME: str = "tailor_resume_sys.txt"
     TAILOR_RESUME_USER_PROMPT_FILENAME: str = "tailor_resume_user.txt"
+    REDUCE_LENGTH_SYSTEM_PROMPT_FILENAME: str = "reduce_length_sys.txt"
+    REDUCE_LENGTH_USER_PROMPT_FILENAME: str = "reduce_length_user.txt"
+    TAILORING_RULES_DEFAULT: str = """
+- Replace the `|professional title|` placeholder in the LaTeX source with the target job title. For example, if the job title is 'Software Engineer', the diff should search for `|professional title|` and replace it with `|Software Engineer|`.
+- Reduce the summary (typically within an `\\introduction{...}` block) to a maximum of 3 impactful sentences, sharply focused on the job requirements.
+- Project details (titles, tools, and dates) specified within `\\resumeProjectHeading` commands must remain unchanged. Do not modify these elements.
+- For the summary section, if it's enclosed in a LaTeX command like `\\introduction{...}`, ensure the SEARCH block in your diff includes the *entire* original content of the command, including the command itself and its braces (e.g., `\\introduction{original summary text...}`). The REPLACE block should then contain the new `\\introduction{new summary text...}`.
+- When modifying any list of items, such as project descriptions within `\\resumeItemListStart`...`\\resumeItemListEnd`, the SEARCH block must include the *entire original* list block, including the `\\resumeItemListStart` and `\\resumeItemListEnd` commands. The REPLACE block must also contain the full new list, again enclosed by `\\resumeItemListStart` and `\\resumeItemListEnd`.
+- Strive for a final resume length that fits on a single page after PDF compilation. This often means being very selective about content.
+"""
 
     # Performance and reliability settings
     API_KEY_MIN_LENGTH: int = 10
@@ -98,6 +108,7 @@ class Settings(BaseSettings):
 
     # Retry settings for diff application
     DIFF_MAX_RETRIES: int = 3
+    PDF_REDUCTION_MAX_RETRIES: int = 2  # Max attempts to reduce PDF length if over 1 page
 
     # File Names
     TAILORED_RESUME_STEM: str = "tailored_resume"
