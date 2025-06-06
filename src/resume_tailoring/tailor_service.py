@@ -63,8 +63,9 @@ class TailorService:
         user_prompt_path = prompts_dir / settings.TAILOR_RESUME_USER_PROMPT_FILENAME
         user_prompt_template = user_prompt_path.read_text(encoding="utf-8")
 
-        # Format user prompt with actual data using default tailoring rules
-        tailoring_rules = settings.TAILORING_RULES_DEFAULT
+        # Load tailoring rules from file
+        tailoring_rules_path = prompts_dir / settings.TAILORING_RULES_FILENAME
+        tailoring_rules = tailoring_rules_path.read_text(encoding="utf-8")
         user_prompt = user_prompt_template.format(
             job_metadata_block=json.dumps(job_metadata, indent=2),
             tailoring_rules=tailoring_rules,

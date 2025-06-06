@@ -90,21 +90,7 @@ class Settings(BaseSettings):
     TAILOR_RESUME_USER_PROMPT_FILENAME: str = "tailor_resume_user.txt"
     REDUCE_LENGTH_SYSTEM_PROMPT_FILENAME: str = "reduce_length_sys.txt"
     REDUCE_LENGTH_USER_PROMPT_FILENAME: str = "reduce_length_user.txt"
-    TAILORING_RULES_DEFAULT: str = """
-- Replace the `|professional title|` placeholder in the LaTeX source with the target job title. For example, if the job title is 'Software Engineer', the diff should search for `|professional title|` and replace it with `|Software Engineer|`.
-- Reduce the summary (typically within an `\\introduction{...}` block) to a maximum of 3 impactful sentences, sharply focused on the job requirements.
-- Project details (titles, tools, and dates) specified within `\\resumeProjectHeading` commands must remain unchanged. Do not modify these elements.
-- For the summary section, if it's enclosed in a LaTeX command like `\\introduction{...}`, ensure the SEARCH block in your diff includes the *entire* original content of the command, including the command itself and its braces (e.g., `\\introduction{original summary text...}`). The REPLACE block should then contain the new `\\introduction{new summary text...}`.
-- When modifying any list of items, such as project descriptions within `\\resumeItemListStart`...`\\resumeItemListEnd`, the SEARCH block must include the *entire original* list block, including the `\\resumeItemListStart` and `\\resumeItemListEnd` commands. The REPLACE block must also contain the full new list, again enclosed by `\\resumeItemListStart` and `\\resumeItemListEnd`.
-- Strive for a final resume length that fits on a single page after PDF compilation. This often means being very selective about content.
-- When aligning skill buckets (as per general tailoring guidelines in `tailor_resume_sys.txt`):
-  - If introducing new skill categories, use the format `\\techSkillsItem{New Category Name}{Skill A, Skill B, Skill C, Skill D}`. Ensure the category name is descriptive and aligns with job description terminology if possible.
-  - A maximum of two such new `\\techSkillsItem` entries for distinct skill categories may be introduced. Prioritize categories explicitly mentioned or strongly implied by the job description.
-  - Each `\\techSkillsItem` (whether existing or newly created for skills) should ideally list a minimum of 4 relevant skills in its second argument. If a newly created skill category would result in fewer than 4 skills being listed for it (drawn from the master resume), those skills should instead be integrated into a more general, existing `\\techSkillsItem` (e.g., under "Developer Tools" or a broad "Technical Skills" if no other specific category fits well) rather than creating a new, sparse `\\techSkillsItem`.
-- If the Soft Skills section is retained (as per general tailoring guidelines in `tailor_resume_sys.txt`):
-  - Ensure it is formatted as `\\techSkillsItem{Soft Skills}{Soft Skill 1, Soft Skill 2, ..., Soft Skill N}`.
-  - Prune the list of soft skills in the second argument to the 8 most relevant ones that align with the job description's emphasized soft skills.
-"""
+    TAILORING_RULES_FILENAME: str = "tailoring_rules_default.txt"
 
     # Performance and reliability settings
     API_KEY_MIN_LENGTH: int = 10
