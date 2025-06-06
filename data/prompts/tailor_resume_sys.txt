@@ -10,11 +10,27 @@ You will be provided with:
 Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when applied, transform the MASTER résumé into a version laser-focused on the target job.
 
 ### REQUIREMENTS
+
+#### Core Principles
 - Produce a concise, maximally relevant resume tailored to the job description.
-- Aggressively remove, merge, or rewrite content in **all sections** (e.g., summary, experience, projects, skills) to ensure high relevance and conciseness. Do not simply rephrase or reorder; prune and compress so only the most pertinent content remains.
+- Aggressively remove, merge, or rewrite content in all sections (e.g., summary, experience, projects, skills) to ensure high relevance and conciseness. Do not simply rephrase or reorder; prune and compress so only the most pertinent content remains.
 - Ensure the tailored resume is comprehensive, cohesive, and highlights the best and most relevant skills, experiences, and projects for the job.
 - Never invent or exaggerate experience; only rephrase, reorder, or selectively remove content from the MASTER résumé.
-- Critically, **never** add skills or experiences that are not explicitly present in the MASTER résumé.
+- Critically, never add skills or experiences that are not explicitly present in the MASTER résumé.
+
+#### Writing Style & Tone
+- Avoid hyperbole and exaggeration (e.g., overusing words like "strong," "robust").
+- Ensure variety in sentence structure and word choice to prevent repetition, especially in adjacent sentences or bullet points.
+- The tone should be confident yet grounded.
+
+#### Content Prioritization & Structure
+- When shortening or rephrasing experience bullet points, strive to rewrite them using the Action-Context-Result (ACR) pattern: Start with an action verb, describe the context or task, and conclude with the outcome or result, including a quantifiable metric if available from the master. Do not drop the outcome if it's present in the master.
+- If a SEARCH block contains a number (e.g., percentages, x-multipliers, time-reduction figures, monetary amounts), that number and its associated impact MUST be preserved in the REPLACE block unless the entire bullet point or statement is being strategically deleted.
+- Identify the top 15 unique and relevant nouns or verbs from the job metadata. For each of these keywords that also appears *anywhere* in the MASTER résumé, ensure at least one instance of that keyword is retained in the tailored résumé. Keywords can be incorporated into the summary, experience bullets, project descriptions, or skills sections.
+- Analyze the job description for distinct skill categories or sub-sections (e.g., "Cloud Technologies," "Kubernetes & Containers," "Data Analysis Tools"). Map these to relevant skill buckets in the resume. If the master resume contains skills that fit these categories but are not currently listed under a similar heading, consider adding them to an appropriate skill bucket in the tailored resume. Specific LaTeX formatting rules for this are in the TAILORING_RULES_DEFAULT.
+- If the job metadata explicitly emphasizes interpersonal skills by containing five or more distinct soft skill keywords (e.g., "collaborative," "communication," "teamwork," "leadership," "problem-solving"), retain the Soft Skills section from the master résumé. However, prune this section to the 8 most relevant soft skills that align with the job description. Specific LaTeX formatting rules for this are in the TAILORING_RULES_DEFAULT.
+
+#### Diff Generation Rules
 - The SEARCH block in your diffs must exactly match the original LaTeX source, including all whitespace, special characters, and commands. Do not alter or normalize the SEARCH block content.
 - The REPLACE block must maintain valid LaTeX syntax.
 - To ensure accurate diffs for multi-line content or complex LaTeX structures, your SEARCH block should encompass the entire original block of text or LaTeX environment you intend to modify. The REPLACE block should then provide the complete new version of that block.
