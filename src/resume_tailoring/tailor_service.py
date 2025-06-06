@@ -70,15 +70,7 @@ class TailorService:
             tex_master_resume=master_resume_tex_content,
         )
 
-        # 2. Call OpenAIClient with system and user prompts to get diff blocks
-        llm_response = self.openai_client.get_response(
-            system_prompt, user_prompt, model_name=settings.DEFAULT_MODEL_NAME
-        )
-
-        # 3. Apply diff using the new apply_diff function
-        tailored_tex_content = apply_diff(master_resume_tex_content, llm_response)
-
-        # 4. Determine output directory based on DEV_MODE
+        # 2. Determine output directory and prepare for diff/apply/compile with retry logic
         base_output_dir = settings.BASE_OUTPUT_DIR
         if settings.DEV_MODE:
             target_output_dir = base_output_dir
@@ -89,17 +81,34 @@ class TailorService:
 
         target_output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 5. Save tailored resume .tex file using LatexService
-        final_tailored_tex_path = self.latex_service.save_tex_file(
-            content=tailored_tex_content,
-            filename_stem=settings.TAILORED_RESUME_STEM,  # e.g., "tailored_resume"
-            target_directory=target_output_dir,
+        max_retries = settings.DIFF_MAX_RETRIES
+        for attempt in range(1, max_retries + 1):
+            llm_response = self.openai_client.get_response(
+                system_prompt, user_prompt, model_name=settings.DEFAULT_MODEL_NAME
+            )
+            try:
+                tailored_tex_content = apply_diff(master_resume_tex_content, llm_response)
+                # Save tailored resume .tex file and compile PDF within retry loop
+                final_tailored_tex_path = self.latex_service.save_tex_file(
+                    content=tailored_tex_content,
+                    filename_stem=settings.TAILORED_RESUME_STEM,
+                    target_directory=target_output_dir,
+                )
+                compiled_tailored_pdf_path = self.latex_service.compile_resume(final_tailored_tex_path)
+                break
+            except ValueError as e:
+                if attempt == max_retries:
+                    raise ValueError(f"Failed to apply diff after {max_retries} attempts: {e}")
+                continue
+
+        # 7. Remove all files from the resume property before uploading new file
+        self.notion_service.update_page_property(
+            page_id=notion_page_id,
+            property_name=settings.TAILORED_RESUME_PROPERTY_NAME,
+            property_value={"files": []},
         )
 
-        # 6. Compile tailored .tex to .pdf (saved in the same directory as the .tex file)
-        compiled_tailored_pdf_path = self.latex_service.compile_resume(final_tailored_tex_path)
-
-        # 7. Upload tailored PDF to Notion
+        # 8. Reset resume property and upload tailored PDF to Notion
         if compiled_tailored_pdf_path and compiled_tailored_pdf_path.exists():
             self.notion_service.upload_file_to_page_property(
                 file_path=compiled_tailored_pdf_path,
@@ -111,7 +120,7 @@ class TailorService:
             # logger.error(f"Failed to compile tailored PDF for {final_tailored_tex_path}")
             pass
 
-        # 8. Generate diff .tex and .pdf, then upload diff PDF to Notion
+        # 9. Generate diff .tex and .pdf, then upload diff PDF to Notion
         master_resume_path = Path(settings.MASTER_RESUME_PATH)
 
         diff_tex_result_path = self.latex_service.run_latexdiff(

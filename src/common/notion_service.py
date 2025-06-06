@@ -329,7 +329,7 @@ class NotionService:
         try:
             upload_id, upload_url = self._create_file_upload_object(file_name)
             self._upload_file_contents(upload_url, file_path, mime_type)
-            self._attach_file_to_page_property(page_id, property_name, upload_id, file_name)
+            self.append_file_to_page_property(page_id, property_name, upload_id, file_name)
         except Exception as e:
             raise NotionAPIError(f"File upload failed: {e}") from e
 
@@ -366,21 +366,36 @@ class NotionService:
         except Exception as e:
             raise NotionAPIError(f"Failed to upload file contents: {e}") from e
 
-    def _attach_file_to_page_property(self, page_id: str, property_name: str, upload_id: str, file_name: str) -> None:
+    def append_file_to_page_property(self, page_id: str, property_name: str, upload_id: str, file_name: str) -> None:
         """
-        Attach the uploaded file to the Notion page property.
+        Append an uploaded file to the Notion page property without removing existing files.
+
+        Args:
+            page_id: The ID of the Notion page to update.
+            property_name: The name of the property to update (must be of type 'files').
+            upload_id: The Notion upload ID for the new file.
+            file_name: The name of the file to display in Notion.
+
+        Raises:
+            NotionAPIError: If the file cannot be appended.
         """
         try:
-            files_value = [
-                {
-                    "type": "file_upload",
-                    "file_upload": {"id": upload_id},
-                    "name": file_name,
-                }
-            ]
+            # Fetch the current files property
+            page = self.get_page_content(page_id)
+            prop = page.get("properties", {}).get(property_name)
+            existing_files = []
+            if prop and prop.get("type") == "files":
+                existing_files = prop.get("files", [])
+            # Append the new file
+            new_file = {
+                "type": "file_upload",
+                "file_upload": {"id": upload_id},
+                "name": file_name,
+            }
+            files_value = existing_files + [new_file]
             self.update_page_property(page_id, property_name, {"files": files_value})
         except Exception as e:
-            raise NotionAPIError(f"Failed to attach uploaded file to Notion page: {e}") from e
+            raise NotionAPIError(f"Failed to append uploaded file to Notion page: {e}") from e
 
     def get_file_from_page_property(self, page_id: str, property_name: str) -> str | None:
         """

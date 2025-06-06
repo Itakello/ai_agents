@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     PDF_ENGINE_FALLBACK: str = "lualatex"
 
     # File paths and directories
-    PROMPTS_DIRECTORY: Path = Path("prompts")
+    PROMPTS_DIRECTORY: Path = Path("data/prompts")
     EXTRACT_METADATA: str = "extract_metadata.txt"
     TAILOR_RESUME_SYSTEM_PROMPT_FILENAME: str = "tailor_resume_sys.txt"
     TAILOR_RESUME_USER_PROMPT_FILENAME: str = "tailor_resume_user.txt"
@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     API_RETRY_DELAY_SECONDS: float = 1.0
     REQUEST_BACKOFF_MULTIPLIER: float = 2.0
     MAX_OUTPUT_FILES_TO_KEEP: int = 100
+
+    # Retry settings for diff application
+    DIFF_MAX_RETRIES: int = 3
 
     # File Names
     TAILORED_RESUME_STEM: str = "tailored_resume"
