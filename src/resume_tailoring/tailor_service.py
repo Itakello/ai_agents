@@ -219,7 +219,12 @@ class TailorService:
         loop_page_count = initial_page_count
 
         reduce_sys_prompt_path = prompts_dir / settings.REDUCE_LENGTH_SYSTEM_PROMPT_FILENAME
-        reduce_sys_prompt = reduce_sys_prompt_path.read_text(encoding="utf-8")
+        reduce_sys_prompt_template = reduce_sys_prompt_path.read_text(encoding="utf-8")
+
+        # Load tailoring rules to format into the system prompt
+        tailoring_rules_path = prompts_dir / settings.TAILORING_RULES_FILENAME
+        tailoring_rules_content = tailoring_rules_path.read_text(encoding="utf-8")
+        reduce_sys_prompt = reduce_sys_prompt_template.format(tailoring_rules=tailoring_rules_content)
 
         reduce_user_prompt_template_path = prompts_dir / settings.REDUCE_LENGTH_USER_PROMPT_FILENAME
         reduce_user_prompt_template = reduce_user_prompt_template_path.read_text(encoding="utf-8")

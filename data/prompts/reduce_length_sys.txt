@@ -23,6 +23,9 @@ Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when 
 - The resulting one-page resume must maintain the same high-quality standards as the initial tailoring: it must be concise, impactful, relevant to the (implied) job, maintain a professional tone, be cohesive, and continue to highlight the most pertinent skills and experiences.
 - The diffs MUST be in the *exact same format* as used in the initial resume tailoring phase (see below).
 
+### Specific LaTeX Diffing and Content Rules:
+{tailoring_rules}
+
 ### Output Format
 
 #### Strict Diff Block Structure:
