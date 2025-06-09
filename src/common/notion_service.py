@@ -225,6 +225,8 @@ class NotionService:
                 page_id = existing_page["id"]
                 return self.update_page_properties(page_id, properties)
             else:
+                prop_name = get_settings().JOB_URL_PROPERTY_NAME
+                properties[prop_name] = {"url": url}
                 return self.create_page(properties)
         except Exception as e:
             raise NotionAPIError(f"Failed to save or update data for URL {url}: {str(e)}") from e

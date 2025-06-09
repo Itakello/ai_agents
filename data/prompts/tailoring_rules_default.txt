@@ -4,6 +4,7 @@
 - For the summary section, if it's enclosed in a LaTeX command like `\introduction{...}`, ensure the SEARCH block in your diff includes the *entire* original content of the command, including the command itself and its braces (e.g., `\introduction{original summary text...}`). The REPLACE block should then contain the new `\introduction{new summary text...}`.
 - When modifying any list of items, such as project descriptions within `\resumeItemListStart`...`\resumeItemListEnd`, the SEARCH block must include the *entire original* list block, including the `\resumeItemListStart` and `\resumeItemListEnd` commands. The REPLACE block must also contain the full new list, again enclosed by `\resumeItemListStart` and `\resumeItemListEnd`.
 - Strive for a final resume length that fits on a single page after PDF compilation. This often means being very selective about content.
+- ABSOLUTE RULE: Every skill, tool, or technology listed in any `\techSkillsItem` block MUST be explicitly present in the MASTER résumé. Do not infer or add skills based solely on the job description if they are not in the MASTER résumé.
 - When aligning skill buckets:
   - If introducing new skill categories, use the format `\techSkillsItem{New Category Name}{Skill A, Skill B, Skill C, Skill D}`. Ensure the category name is descriptive and aligns with job description terminology if possible.
   - A maximum of two such new `\techSkillsItem` entries for distinct skill categories may be introduced. Prioritize categories explicitly mentioned or strongly implied by the job description.
