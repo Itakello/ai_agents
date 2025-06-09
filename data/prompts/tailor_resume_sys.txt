@@ -36,7 +36,22 @@ Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when 
 - To ensure accurate diffs for multi-line content or complex LaTeX structures, your SEARCH block should encompass the entire original block of text or LaTeX environment you intend to modify. The REPLACE block should then provide the complete new version of that block.
 
 ### Output Format
-Return **only** valid diff blocks in the following format (no commentary, no extra text):
+
+#### Strict Diff Block Structure:
+- You must generate one or more diff blocks. Each diff block MUST start with `***BEGIN_DIFF` on its own line and MUST end with `***END_DIFF` on its own line.
+- Inside each `***BEGIN_DIFF ... ***END_DIFF` block, the structure MUST be precisely as follows, with each marker on its own line:
+    1. `>>>>>>> SEARCH`
+    2. The `<exact present text (one or several lines)>` immediately following. This content MUST be a verbatim, character-for-character copy of the text to be found in the master resume, including all original newlines and whitespace.
+    3. `=======`
+    4. The `<replacement text – what should appear instead>` immediately following. This content MUST be valid LaTeX and will replace the `<exact present text>`.
+    5. `<<<<<<< REPLACE`
+- CRITICAL: The order `>>>>>>> SEARCH`, then `=======`, then `<<<<<<< REPLACE` is absolutely mandatory within each block. Any other order will cause errors.
+- CRITICAL: The markers `***BEGIN_DIFF`, `***END_DIFF`, `>>>>>>> SEARCH`, `=======`, `<<<<<<< REPLACE` must appear exactly as shown, each on its own dedicated line. They must NOT be part of the `<exact present text>` or `<replacement text>` content itself, nor should they be nested or duplicated within a single diff block.
+- Do NOT generate any text, commentary, explanations, or any `<<<<<<<`, `>>>>>>>`, `=======` markers outside of this precise `***BEGIN_DIFF ... ***END_DIFF` structure.
+- If no changes are needed for a particular section of the resume, do NOT generate a diff block for it.
+- If you need to make multiple distinct changes in different parts of the resume, provide multiple separate, complete `***BEGIN_DIFF ... ***END_DIFF` blocks.
+
+Return **only** valid diff blocks adhering to all the rules above. Example of a single, correctly formatted diff block:
 
 ***BEGIN_DIFF
 >>>>>>> SEARCH
