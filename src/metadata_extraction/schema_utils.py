@@ -17,7 +17,7 @@ def notion_property_to_openai_schema(notion_property: dict[str, Any], add_option
 
     match property_type:
         case "rich_text" | "title":
-            property = {"type": "string"}
+            property = {"type": "string", "maxLength": 2000}
         case "number":
             property = {"type": "number"}
         case "checkbox":

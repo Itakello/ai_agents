@@ -85,12 +85,12 @@ class TestNotionPropertyToOpenAISchema:
     def test_rich_text_property(self) -> None:
         notion_prop = {"type": "rich_text"}
         result = notion_property_to_openai_schema(notion_prop, add_options=False)
-        assert result == {"type": "string"}
+        assert result == {"type": "string", "maxLength": 2000}
 
     def test_title_property(self) -> None:
         notion_prop = {"type": "title"}
         result = notion_property_to_openai_schema(notion_prop, add_options=False)
-        assert result == {"type": "string"}
+        assert result == {"type": "string", "maxLength": 2000}
 
     def test_number_property(self) -> None:
         notion_prop = {"type": "number"}
@@ -308,8 +308,8 @@ class TestCreateOpenAISchemaFromNotionDatabase:
         expected = {
             "type": "object",
             "properties": {
-                "job_title": {"type": "string"},
-                "company": {"type": "string"},
+                "job_title": {"type": "string", "maxLength": 2000},
+                "company": {"type": "string", "maxLength": 2000},
                 "salary": {"type": "number"},
                 "is_remote": {"type": "boolean"},
             },
@@ -333,7 +333,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
         # Only job_title should be included
         expected = {
             "type": "object",
-            "properties": {"job_title": {"type": "string"}},
+            "properties": {"job_title": {"type": "string", "maxLength": 2000}},
             "required": ["job_title"],
             "additionalProperties": False,
         }
@@ -374,8 +374,8 @@ class TestCreateOpenAISchemaFromNotionDatabase:
         expected = {
             "type": "object",
             "properties": {
-                "job_title": {"type": "string"},
-                "company": {"type": "string"},
+                "job_title": {"type": "string", "maxLength": 2000},
+                "company": {"type": "string", "maxLength": 2000},
             },
             "required": ["job_title", "company"],
             "additionalProperties": False,
@@ -640,7 +640,7 @@ class TestNotionPropertyToOpenAISchemaEnhanced:
         """Test that descriptions are preserved in the schema."""
         notion_prop = {"type": "rich_text", "description": "A detailed description of this field"}
         result = notion_property_to_openai_schema(notion_prop, add_options=False)
-        expected = {"type": "string", "description": "A detailed description of this field"}
+        expected = {"type": "string", "maxLength": 2000, "description": "A detailed description of this field"}
         assert result == expected
 
     def test_select_with_empty_options_list(self) -> None:
