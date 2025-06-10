@@ -88,9 +88,9 @@ class Settings(BaseSettings):
     EXTRACT_METADATA: str = "extract_metadata.txt"
     TAILOR_RESUME_SYSTEM_PROMPT_FILENAME: str = "tailor_resume_sys.txt"
     TAILOR_RESUME_USER_PROMPT_FILENAME: str = "tailor_resume_user.txt"
-    REDUCE_LENGTH_SYSTEM_PROMPT_FILENAME: str = "reduce_length_sys.txt"
-    REDUCE_LENGTH_USER_PROMPT_FILENAME: str = "reduce_length_user.txt"
     TAILORING_RULES_FILENAME: str = "tailoring_rules_default.txt"
+    # Prompt filename for reducing an overlong resume PDF to 1 page
+    PDF_REDUCTION_PROMPT_FILENAME: str = "reduce_resume_prompt.txt"
 
     # Performance and reliability settings
     API_KEY_MIN_LENGTH: int = 10

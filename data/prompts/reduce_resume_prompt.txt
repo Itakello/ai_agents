@@ -1,0 +1,35 @@
+# Reduce Resume Prompt Template
+
+You are an expert resume writer and LaTeX editor. The goal is to shorten the resume so that it fits on **one page**.
+
+Context:
+- The resume is currently {page_count} pages long.
+- The following text appears on the overflow pages (everything after the first page). Use this to gauge how much content must be condensed. Do **not** remove content blindly; instead, rewrite or condense as needed so that the finished PDF fits on a single page.
+
+```
+{overflow_page_text}
+```
+
+You will be provided with the **entire current .tex source** of the resume to modify. Generate a **diff** that updates the LaTeX so the compiled PDF will be one page. Follow the established diff format:
+
+```
+>>>>>>> SEARCH
+<original block>
+=======
+<replacement block>
+<<<<<<< REPLACE
+```
+
+Rules:
+1. Aim to preserve key achievements and details while condensing wording.
+2. Do **not** state that text must be removed; simply shorten the resume appropriately.
+3. Maintain structural integrity: keep `\resumeProjectHeading`, project titles, dates, and tools unchanged.
+4. If you edit any `\introduction{...}` or list blocks, the diff's SEARCH block must include the entire original command or list block, and the REPLACE block must contain the full updated version.
+5. Ensure the final resume will fit on one page when compiled.
+6. Respond **only** with the diff.
+
+Current TeX Source:
+
+```
+{current_tex_content}
+```

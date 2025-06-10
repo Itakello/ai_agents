@@ -6,7 +6,7 @@ from typing import Any
 
 from src.common.llm_clients import OpenAIClient
 from src.common.notion_service import NotionService
-from src.core.config import Settings, get_settings
+from src.core.config import get_settings
 from src.core.logger import logger
 
 from .latex_service import LatexService
@@ -132,8 +132,6 @@ class TailorService:
                         current_pdf_path=compiled_tailored_pdf_path,
                         initial_page_count=page_count,
                         target_output_dir=target_output_dir,
-                        settings=settings,
-                        prompts_dir=prompts_dir,
                     )
             except RuntimeError as e_pdf_processing:  # Covers errors from get_pdf_page_count or _reduce_pdf_to_one_page
                 logger.critical(
@@ -206,66 +204,52 @@ class TailorService:
         self,
         current_tex_content: str,
         current_pdf_path: Path,
-        initial_page_count: int,  # Page count of current_pdf_path
+        initial_page_count: int,
         target_output_dir: Path,
-        settings: Settings,
-        prompts_dir: Path,
     ) -> tuple[str, Path]:
+        settings = get_settings()
         logger.info(f"Resume is {initial_page_count} pages. Attempting to reduce to 1 page.")
 
-        # These are local to the reduction process
         loop_tex_content = current_tex_content
         loop_pdf_path = current_pdf_path
         loop_page_count = initial_page_count
 
-        reduce_sys_prompt_path = prompts_dir / settings.REDUCE_LENGTH_SYSTEM_PROMPT_FILENAME
-        reduce_sys_prompt_template = reduce_sys_prompt_path.read_text(encoding="utf-8")
-
-        # Load tailoring rules to format into the system prompt
-        tailoring_rules_path = prompts_dir / settings.TAILORING_RULES_FILENAME
-        tailoring_rules_content = tailoring_rules_path.read_text(encoding="utf-8")
-        reduce_sys_prompt = reduce_sys_prompt_template.format(tailoring_rules=tailoring_rules_content)
-
-        reduce_user_prompt_template_path = prompts_dir / settings.REDUCE_LENGTH_USER_PROMPT_FILENAME
-        reduce_user_prompt_template = reduce_user_prompt_template_path.read_text(encoding="utf-8")
-
         for reduction_attempt in range(1, settings.PDF_REDUCTION_MAX_RETRIES + 1):
             logger.info(f"PDF reduction attempt {reduction_attempt}/{settings.PDF_REDUCTION_MAX_RETRIES}")
 
-            overflow_page_text: str
-            # This method is only called if initial_page_count > 1.
-            # We must get overflow text from page 2.
             try:
-                extracted_text = self.latex_service.get_text_from_pdf_page(loop_pdf_path, 2)
-                if not extracted_text:  # None or empty string
-                    err_msg = f"Critical: Overflow text from page 2 is required to reduce a {loop_page_count}-page PDF but could not be extracted from {loop_pdf_path} (or page 2 was empty). Terminating reduction."
-                    logger.critical(err_msg)
-                    raise RuntimeError(err_msg)
-                overflow_page_text = extracted_text
-            except RuntimeError as e_text_extract:
-                err_msg = f"Critical: Failed to extract text from page 2 of {loop_pdf_path} due to runtime error: {e_text_extract}. Terminating reduction."
+                overflow_page_text = self.latex_service.get_text_from_pdf_page(loop_pdf_path, 2)
+                if not overflow_page_text:
+                    raise RuntimeError("Extracted overflow text was empty.")
+            except (RuntimeError, FileNotFoundError) as e:
+                err_msg = f"Critical: Could not get overflow text from page 2 of {loop_pdf_path}. Reason: {e}. Terminating reduction."
                 logger.critical(err_msg)
-                raise RuntimeError(err_msg) from e_text_extract
-            except FileNotFoundError:
-                err_msg = f"Critical: PDF file {loop_pdf_path} not found during text extraction for page 2. Terminating reduction."
-                logger.critical(err_msg)
-                raise RuntimeError(err_msg)
+                raise RuntimeError(err_msg) from e
 
-            reduce_user_prompt = reduce_user_prompt_template.format(
-                current_page_count=loop_page_count,
-                current_latex_content=loop_tex_content,
+            # Build reduction prompt from template instead of hardcoding
+            prompts_dir = Path(settings.PROMPTS_DIRECTORY)
+            reduction_prompt_path = prompts_dir / settings.PDF_REDUCTION_PROMPT_FILENAME
+            reduction_prompt_template = reduction_prompt_path.read_text(encoding="utf-8")
+
+            # Fill in template placeholders
+            reduction_user_prompt = reduction_prompt_template.format(
+                page_count=loop_page_count,
                 overflow_page_text=overflow_page_text,
+                current_tex_content=loop_tex_content,
             )
 
+            # We call get_response with only the user_prompt. The client will handle the history.
             reduction_llm_response = self.openai_client.get_response(
-                reduce_sys_prompt, reduce_user_prompt, model_name=settings.DEFAULT_MODEL_NAME
+                sys_prompt=None,  # System prompt is already in the history
+                user_prompt=reduction_user_prompt,
+                model_name=settings.DEFAULT_MODEL_NAME,
             )
 
             try:
                 loop_tex_content = apply_diff(loop_tex_content, reduction_llm_response)
                 loop_pdf_path = self.latex_service.save_tex_file(
                     content=loop_tex_content,
-                    filename_stem=settings.TAILORED_RESUME_STEM,  # Overwrite existing
+                    filename_stem=settings.TAILORED_RESUME_STEM,
                     target_directory=target_output_dir,
                 )
                 loop_pdf_path = self.latex_service.compile_resume(loop_pdf_path)
@@ -274,18 +258,19 @@ class TailorService:
 
                 if loop_page_count <= 1:
                     logger.info("Successfully reduced PDF to 1 page.")
-                    break  # Exit reduction loop
+                    break
 
             except ValueError as e_reduce_diff:
                 logger.warning(f"Failed to apply reduction diff on attempt {reduction_attempt}: {e_reduce_diff}")
                 if reduction_attempt == settings.PDF_REDUCTION_MAX_RETRIES:
                     logger.warning("Max reduction retries reached. Proceeding with current PDF version.")
-                    break  # Exit reduction loop, use current multi-page PDF
-                continue  # Try next reduction attempt
+                    break
+                continue
 
         if loop_page_count > 1:
             logger.warning(
-                f"Failed to reduce PDF to 1 page after {settings.PDF_REDUCTION_MAX_RETRIES} attempts. Final page count: {loop_page_count}"
+                f"Failed to reduce PDF to 1 page after {settings.PDF_REDUCTION_MAX_RETRIES} attempts. "
+                f"Final page count: {loop_page_count}"
             )
 
         return loop_tex_content, loop_pdf_path
