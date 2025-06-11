@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     GOAL_PAGE_COUNT: int = 1
 
     # File Names
-    TAILORED_RESUME_STEM: str = "tailored_resume"
+    TAILORED_RESUME_STEM: str = "tailored_resumed"
     TAILORED_RESUME_DIFF_STEM: str = "tailored_resume_diff"
 
     BASE_OUTPUT_DIR: Path = Path("out")
