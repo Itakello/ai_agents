@@ -10,7 +10,7 @@ import asyncio
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler  # type: ignore
-from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig  # type: ignore
+from crawl4ai.async_configs import BrowserConfig, CacheMode, CrawlerRunConfig  # type: ignore
 from crawl4ai.models import CrawlResultContainer  # type: ignore
 
 from ..common.llm_clients import OpenAIClient
@@ -192,7 +192,7 @@ class ExtractorService:
 
         # Default configuration
         config_params = {
-            # "cache_mode": CacheMode.ENABLED,
+            "cache_mode": CacheMode.ENABLED,
             "page_timeout": settings.CRAWL4AI_TIMEOUT_SECONDS * 1000,
             "delay_before_return_html": 5.0,
             "remove_overlay_elements": True,
