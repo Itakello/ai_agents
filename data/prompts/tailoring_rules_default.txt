@@ -1,4 +1,9 @@
-- Replace the `|professional title|` placeholder in the LaTeX source with the target job title. For example, if the job title is 'Software Engineer', the diff should search for `|professional title|` and replace it with `|Software Engineer|`.
+- Replace the `|professional title|` placeholder in the LaTeX source with a **cleaned** version of the target job title:
+  - Keep **only** the core role name (e.g., `|Software Engineer|`).
+  - **Remove** any location indicators (e.g., `, Multiple Locations`, city/state names).
+  - **Remove** corporate program descriptors or training-track labels (e.g., `Microsoft Software and Systems Academy (MSSA)`).
+  - Retain parenthetical abbreviations **only** if they clarify the role itself (e.g., `Technical Program Manager (TPM)`), not if they denote an external program or organization.
+  - Example: From the job title `Software Engineer – Microsoft Software and Systems Academy (MSSA), Multiple Locations`, the cleaned title should be `|Software Engineer|`.
 - Reduce the summary (typically within an `\introduction{...}` block) to a maximum of 3 impactful sentences, sharply focused on the job requirements.
 - Project details (titles, tools, and dates) specified within `\resumeProjectHeading` commands must remain unchanged. Do not modify these elements.
 - For the summary section, if it's enclosed in a LaTeX command like `\introduction{...}`, ensure the SEARCH block in your diff includes the *entire* original content of the command, including the command itself and its braces (e.g., `\introduction{original summary text...}`). The REPLACE block should then contain the new `\introduction{new summary text...}`.
