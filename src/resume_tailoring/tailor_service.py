@@ -25,19 +25,9 @@ def apply_diff(src: str, diff: str) -> str:
             return replace + "\n" + search  # keep sentinel for idempotency
 
         # First try a literal substring replacement
-        occ = src.find(search)
+        occ = src.find(search.strip())
         if occ != -1:
             return src.replace(search, replace, 1)
-
-        # Fallback: try a whitespace-insensitive match (tolerates differing indentation)
-        #   1. Escape the search text so regex meta-chars are treated literally.
-        #   2. Replace every run of whitespace with the regex pattern "\s+" so that
-        #      differences in indentation or line endings do not cause a mismatch.
-        search_pattern = re.sub(r"\s+", r"\\s+", re.escape(search.strip()))
-        match_ws = re.search(search_pattern, src, flags=re.S)
-        if match_ws:
-            start, end = match_ws.span()
-            return src[:start] + replace + src[end:]
 
         # If still not found, raise the same informative error as before
         raise ValueError(f"Search block not found:\n---\n{search}\n---")

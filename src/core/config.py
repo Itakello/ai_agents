@@ -101,7 +101,7 @@ class Settings(BaseSettings):
 
     # Retry settings for diff application
     DIFF_MAX_RETRIES: int = 3
-    PDF_REDUCTION_MAX_RETRIES: int = 5  # Max attempts to reduce PDF length if over 1 page
+    PDF_REDUCTION_MAX_RETRIES: int = 10  # Max attempts to reduce PDF length if over 1 page
 
     # File Names
     TAILORED_RESUME_STEM: str = "tailored_resume"
