@@ -33,7 +33,13 @@ def test_logger_env_file(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     project_root = Path(__file__).parent.parent.parent
     env_file = project_root / ".env"
     env_content = "TEST_LOG_VAR=hello_env\n"
-    env_file.write_text(env_content)
+    # Backup existing .env if it exists to avoid deleting user configuration
+    original_env_content: str | None = None
+    env_file_preexisting = env_file.exists()
+    if env_file_preexisting:
+        original_env_content = env_file.read_text(encoding="utf-8")
+    # Write test .env content (overwriting if necessary)
+    env_file.write_text(env_content, encoding="utf-8")
     try:
         # Remove variable if already present
         if "TEST_LOG_VAR" in os.environ:
@@ -41,7 +47,11 @@ def test_logger_env_file(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
         logger_mod._load_env_file()
         assert os.environ.get("TEST_LOG_VAR") == "hello_env"
     finally:
-        env_file.unlink(missing_ok=True)
+        # Restore original .env content or remove the file if we created it
+        if env_file_preexisting and original_env_content is not None:
+            env_file.write_text(original_env_content, encoding="utf-8")
+        else:
+            env_file.unlink(missing_ok=True)
         if "TEST_LOG_VAR" in os.environ:
             del os.environ["TEST_LOG_VAR"]
 
