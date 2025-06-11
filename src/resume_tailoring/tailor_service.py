@@ -23,10 +23,24 @@ def apply_diff(src: str, diff: str) -> str:
         search, replace = match.group(1), match.group(2)
         if search == "<<EMPTY>>":  # pure insertion
             return replace + "\n" + search  # keep sentinel for idempotency
+
+        # First try a literal substring replacement
         occ = src.find(search)
-        if occ == -1:
-            raise ValueError(f"Search block not found:\n{search[:80]}…")
-        return src.replace(search, replace, 1)
+        if occ != -1:
+            return src.replace(search, replace, 1)
+
+        # Fallback: try a whitespace-insensitive match (tolerates differing indentation)
+        #   1. Escape the search text so regex meta-chars are treated literally.
+        #   2. Replace every run of whitespace with the regex pattern "\s+" so that
+        #      differences in indentation or line endings do not cause a mismatch.
+        search_pattern = re.sub(r"\s+", r"\\s+", re.escape(search.strip()))
+        match_ws = re.search(search_pattern, src, flags=re.S)
+        if match_ws:
+            start, end = match_ws.span()
+            return src[:start] + replace + src[end:]
+
+        # If still not found, raise the same informative error as before
+        raise ValueError(f"Search block not found:\n{search[:80]}…")
 
     # iterate through all blocks in the diff
     for block in DIFF_PAT.finditer(diff):
@@ -233,7 +247,7 @@ class TailorService:
 
             # Fill in template placeholders
             reduction_user_prompt = reduction_prompt_template.format(
-                page_count=loop_page_count,
+                page_count=str(loop_page_count),
                 overflow_page_text=overflow_page_text,
                 current_tex_content=loop_tex_content,
             )

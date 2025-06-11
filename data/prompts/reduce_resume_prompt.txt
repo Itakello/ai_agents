@@ -24,7 +24,7 @@ Rules:
 1. Aim to preserve key achievements and details while condensing wording.
 2. Do **not** state that text must be removed; simply shorten the resume appropriately.
 3. Maintain structural integrity: keep `\resumeProjectHeading`, project titles, dates, and tools unchanged.
-4. If you edit any `\introduction{...}` or list blocks, the diff's SEARCH block must include the entire original command or list block, and the REPLACE block must contain the full updated version.
+4. If you edit any `\introduction` or list blocks, the diff's SEARCH block must include the entire original command or list block, and the REPLACE block must contain the full updated version.
 5. Ensure the final resume will fit on one page when compiled.
 6. Respond **only** with the diff.
 

@@ -84,7 +84,7 @@ class OpenAIClient:
             response = self.client.responses.create(
                 input=messages,
                 model=model_name,
-                temperature=self.temperature,
+                temperature=self.temperature if model_name != "o4-mini" else NOT_GIVEN,
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
             )
 
