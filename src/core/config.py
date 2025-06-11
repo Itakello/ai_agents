@@ -90,7 +90,8 @@ class Settings(BaseSettings):
     TAILOR_RESUME_USER_PROMPT_FILENAME: str = "tailor_resume_user.txt"
     TAILORING_RULES_FILENAME: str = "tailoring_rules_default.txt"
     # Prompt filename for reducing an overlong resume PDF to 1 page
-    PDF_REDUCTION_PROMPT_FILENAME: str = "reduce_resume_prompt.txt"
+    # Uses `data/prompts/reduce_resume_user.txt` (context-only user prompt)
+    PDF_REDUCTION_PROMPT_FILENAME: str = "reduce_resume_user.txt"
 
     # Performance and reliability settings
     API_KEY_MIN_LENGTH: int = 10
@@ -101,7 +102,8 @@ class Settings(BaseSettings):
 
     # Retry settings for diff application
     DIFF_MAX_RETRIES: int = 3
-    PDF_REDUCTION_MAX_RETRIES: int = 10  # Max attempts to reduce PDF length if over 1 page
+    PDF_REDUCTION_MAX_RETRIES: int = 10  # Max attempts to reduce PDF Length
+    GOAL_PAGE_COUNT: int = 1
 
     # File Names
     TAILORED_RESUME_STEM: str = "tailored_resume"

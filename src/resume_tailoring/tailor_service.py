@@ -238,6 +238,7 @@ class TailorService:
             # Fill in template placeholders
             reduction_user_prompt = reduction_prompt_template.format(
                 page_count=str(loop_page_count),
+                goal_pages=str(settings.GOAL_PAGE_COUNT),
                 overflow_page_text=overflow_page_text,
                 current_tex_content=loop_tex_content,
             )

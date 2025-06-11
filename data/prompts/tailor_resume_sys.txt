@@ -35,6 +35,19 @@ Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when 
 - The REPLACE block must maintain valid LaTeX syntax.
 - To ensure accurate diffs for multi-line content or complex LaTeX structures, your SEARCH block should encompass the entire original block of text or LaTeX environment you intend to modify. The REPLACE block should then provide the complete new version of that block.
 
+### PDF REDUCTION GUIDE
+- When a **reduction context** is provided in the user message, generate diff blocks to shrink the résumé so that the compiled PDF reaches the specified goal page count.
+- The context includes:
+  - `PAGES {page_count}/{goal_pages}` — current vs. goal pages.
+  - `overflow_page_text` — text appearing after page 1; this is **not** the text to remove, only an indicator of overflow volume.
+  - `current_tex_content` — full LaTeX source to modify.
+
+#### Reduction Principles
+1. Preserve key achievements and metrics; rewrite or condense rather than delete wholesale where possible.
+2. Use the overflow text length merely as a gauge for how much to condense; do **not** target or copy that text directly.
+3. Do **not** state that text must be removed; simply supply the concise replacement so the final PDF meets the goal.
+4. Iterate until the résumé meets the page goal.
+
 ### Output Format
 
 #### Strict Diff Block Structure:
