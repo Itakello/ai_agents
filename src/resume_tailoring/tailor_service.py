@@ -40,7 +40,7 @@ def apply_diff(src: str, diff: str) -> str:
             return src[:start] + replace + src[end:]
 
         # If still not found, raise the same informative error as before
-        raise ValueError(f"Search block not found:\n{search[:80]}…")
+        raise ValueError(f"Search block not found:\n---\n{search}\n---")
 
     # iterate through all blocks in the diff
     for block in DIFF_PAT.finditer(diff):
