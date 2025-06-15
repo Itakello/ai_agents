@@ -284,6 +284,10 @@ This project uses `pre-commit` with `black` for code formatting, `ruff` for lint
     ruff check . --fix
     ```
 
+## Legal and Ethical Use
+
+Users must inspect & comply with each site's Terms of Service, robots.txt, and privacy policies before scraping any content with this pipeline. Failure to do so may violate the law and the policies of the target websites.
+
 ## Contributing
 
 (Add guidelines if you plan to collaborate or open-source the template/projects derived from it.)
