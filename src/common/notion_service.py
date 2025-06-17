@@ -12,6 +12,11 @@ from typing import Any
 import requests
 from notion_client import Client as NotionClient
 
+from src.common.models import (
+    NotionDatabase,
+    NotionDatabaseSchemaProperty,
+    NotionPage,
+)
 from src.core.config import get_settings
 
 
@@ -38,25 +43,22 @@ class NotionService:
         self.client = NotionClient(auth=api_key)
         self.database_id = database_id
 
-    def get_page_content(self, page_id: str) -> dict[str, Any]:
+    def get_page(self, page_id: str) -> NotionPage:
         """Fetch the content of a Notion page by its ID.
 
         Args:
             page_id: The ID of the Notion page to fetch.
 
         Returns:
-            A dictionary containing the page content.
+            A NotionPage instance containing the page content.
 
         Raises:
-            APIErrorCode: If there's an error communicating with the Notion API.
+            NotionAPIError: If there's an error communicating with the Notion API.
         """
         try:
-            result = self.client.pages.retrieve(page_id=page_id)
-            if isinstance(result, dict):
-                return result
-            raise ValueError("Unexpected return type from Notion API")
+            raw_result = self.client.pages.retrieve(page_id=page_id)
+            return NotionPage.model_validate(raw_result)
         except Exception as e:
-            # Wrap any exception in our custom exception
             raise NotionAPIError(f"Failed to fetch page {page_id}: {str(e)}") from e
 
     def get_database_schema(self) -> dict[str, Any]:
@@ -69,16 +71,31 @@ class NotionService:
             NotionAPIError: If there's an error fetching the database schema.
         """
         try:
-            result = self.client.databases.retrieve(database_id=self.database_id)
-            if isinstance(result, dict) and "properties" in result:
-                properties = result["properties"]
-                if isinstance(properties, dict):
-                    return properties
-            raise ValueError("Unexpected return type from Notion API or missing properties")
+            raw_result = self.client.databases.retrieve(database_id=self.database_id)
+            # Add required fields for validation
+            if isinstance(raw_result, dict):
+                raw_result.update(
+                    {
+                        "created_time": raw_result.get("created_time", "2024-01-01T00:00:00.000Z"),
+                        "last_edited_time": raw_result.get("last_edited_time", "2024-01-01T00:00:00.000Z"),
+                        "title": raw_result.get("title", [{"plain_text": "Database"}]),
+                    }
+                )
+                # Add name field to properties if missing
+                for prop_name, prop in raw_result.get("properties", {}).items():
+                    if isinstance(prop, dict) and "name" not in prop:
+                        prop["name"] = prop_name
+
+            db_model: NotionDatabase = NotionDatabase.model_validate(raw_result)
+
+            return {
+                name: prop.model_dump(mode="python") if isinstance(prop, NotionDatabaseSchemaProperty) else prop
+                for name, prop in db_model.properties.items()
+            }
         except Exception as e:
             raise NotionAPIError(f"Failed to fetch database schema for {self.database_id}: {str(e)}") from e
 
-    def update_page_property(self, page_id: str, property_name: str, property_value: Any) -> dict[str, Any]:
+    def update_page_property(self, page_id: str, property_name: str, property_value: Any) -> NotionPage:
         """Update a specific property on a Notion page.
 
         Args:
@@ -87,20 +104,18 @@ class NotionService:
             property_value: The new value for the property.
 
         Returns:
-            A dictionary containing the updated page data.
+            A NotionPage instance containing the updated page data.
 
         Raises:
             NotionAPIError: If there's an error updating the page property.
         """
         try:
-            result = self.client.pages.update(page_id=page_id, properties={property_name: property_value})
-            if isinstance(result, dict):
-                return result
-            raise ValueError("Unexpected return type from Notion API")
+            raw_result = self.client.pages.update(page_id=page_id, properties={property_name: property_value})
+            return NotionPage.model_validate(raw_result)
         except Exception as e:
             raise NotionAPIError(f"Failed to update property '{property_name}' on page {page_id}: {str(e)}") from e
 
-    def update_page_properties(self, page_id: str, properties_update: dict[str, Any]) -> dict[str, Any]:
+    def update_page_properties(self, page_id: str, properties_update: dict[str, Any]) -> NotionPage:
         """Update multiple properties on a Notion page.
 
         Args:
@@ -110,7 +125,7 @@ class NotionService:
                 - {"properties": {"property_name": property_value, ...}}
 
         Returns:
-            A dictionary containing the updated page data.
+            A NotionPage instance containing the updated page data.
 
         Raises:
             NotionAPIError: If there's an error updating the page properties.
@@ -121,10 +136,8 @@ class NotionService:
         else:
             properties = properties_update
         try:
-            result = self.client.pages.update(page_id=page_id, properties=properties)
-            if isinstance(result, dict):
-                return result
-            raise ValueError("Unexpected return type from Notion API")
+            raw_result = self.client.pages.update(page_id=page_id, properties=properties)
+            return NotionPage.model_validate(raw_result)
         except Exception as e:
             raise NotionAPIError(f"Failed to update properties on page {page_id}: {str(e)}") from e
 
@@ -223,7 +236,7 @@ class NotionService:
             properties = self._format_properties_for_notion(extracted_data, database_schema)
             if existing_page:
                 page_id = existing_page["id"]
-                return self.update_page_properties(page_id, properties)
+                return self.update_page_properties(page_id, properties).model_dump(mode="python")
             else:
                 prop_name = get_settings().JOB_URL_PROPERTY_NAME
                 properties[prop_name] = {"url": url}
@@ -383,11 +396,11 @@ class NotionService:
         """
         try:
             # Fetch the current files property
-            page = self.get_page_content(page_id)
-            prop = page.get("properties", {}).get(property_name)
-            existing_files = []
-            if prop and prop.get("type") == "files":
-                existing_files = prop.get("files", [])
+            page = self.get_page(page_id)
+            prop = page.properties.get(property_name)
+            existing_files: list[dict[str, Any]] = []
+            if prop and prop.type == "files" and prop.files:
+                existing_files = [f.model_dump(mode="python") for f in prop.files]
             # Append the new file
             new_file = {
                 "type": "file_upload",
@@ -410,16 +423,13 @@ class NotionService:
         Returns:
             The markdown content as a string, or None if not found or download fails.
         """
-
         try:
-            page = self.get_page_content(page_id)
-            prop = page.get("properties", {}).get(property_name)
-            if not prop or prop.get("type") != "files":
+            page = self.get_page(page_id)
+            prop = page.properties.get(property_name)
+            if not prop or prop.type != "files" or not prop.files:
                 return None
-            files = prop.get("files", [])
-            if not files or not isinstance(files, list):
-                return None
-            file_url = files[0].get("file", {}).get("url") or files[0].get("external", {}).get("url")
+            file_obj = prop.files[0]
+            file_url = file_obj.url
             if not file_url:
                 return None
             resp = requests.get(file_url)

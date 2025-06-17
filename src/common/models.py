@@ -1,11 +1,7 @@
-from __future__ import annotations
+from collections.abc import ItemsView, KeysView, ValuesView
+from typing import Any, Literal
 
-from typing import TYPE_CHECKING, Any, Literal
-
-if TYPE_CHECKING:
-    from collections.abc import ItemsView, KeysView, ValuesView
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 
 class NotionFileObject(BaseModel):
@@ -70,7 +66,7 @@ class NotionPropertyItem(BaseModel):
         extra = "allow"  # Allow other property types not explicitly defined
 
 
-class NotionPageProperties(BaseModel):
+class NotionPageProperties(RootModel[dict[str, "NotionPropertyItem"]]):
     """Represents the 'properties' field of a Notion page object."""
 
     # Using a dictionary where keys are property names and values are NotionPropertyItem
@@ -78,69 +74,145 @@ class NotionPageProperties(BaseModel):
     # For more type safety on known properties, they could be explicit fields.
     # Example: 'Name': NotionPropertyItem, 'Date Created': NotionPropertyItem
     # However, property names are dynamic, so dict is more flexible.
-    __root__: dict[str, NotionPropertyItem]
 
-    def __getitem__(self, item: str) -> NotionPropertyItem:
-        return self.__root__[item]
+    def __getitem__(self, item: str) -> "NotionPropertyItem":
+        return self.root[item]
 
-    def get(self, item: str, default: Any | None = None) -> NotionPropertyItem | Any | None:
-        return self.__root__.get(item, default)
+    def get(self, item: str, default: Any | None = None) -> "NotionPropertyItem | None":
+        return self.root.get(item, default)
 
-    def items(self) -> ItemsView[str, NotionPropertyItem]:
-        return self.__root__.items()
+    def items(self) -> ItemsView[str, "NotionPropertyItem"]:
+        return self.root.items()
 
     def keys(self) -> KeysView[str]:
-        return self.__root__.keys()
+        return self.root.keys()
 
-    def values(self) -> ValuesView[NotionPropertyItem]:
-        return self.__root__.values()
+    def values(self) -> ValuesView["NotionPropertyItem"]:
+        return self.root.values()
 
 
 class NotionPage(BaseModel):
-    """Simplified representation of a Notion Page object."""
+    """Representation of a Notion Page with convenience helpers."""
 
     object: Literal["page"] = Field(description="Object type, always 'page'.")
     id: str = Field(description="Page ID.")
+
+    # Timestamps
     created_time: str
     last_edited_time: str
-    archived: bool
-    parent: dict[str, Any]  # Could be DatabaseParent, PageParent, WorkspaceParent
-    url: str
+
+    # Archive / trash flags -------------------------------------------------
+    archived: bool | None = None
+    in_trash: bool | None = None
+
+    # Parent information (database_id, page_id or workspace) --------------
+    parent: dict[str, Any] | None = None
+
+    # Visuals --------------------------------------------------------------
+    icon: dict[str, Any] | None = None
+    cover: dict[str, Any] | None = None
+
+    # URL ------------------------------------------------------------------
+    url: str | None = None
+    public_url: str | None = None
+
+    # The actual content of interest
     properties: NotionPageProperties = Field(description="Page properties.")
-    # icon, cover, created_by, last_edited_by can be added as needed
+
+    def title_text(self) -> str | None:
+        """Extract the title text from the page properties."""
+        for prop in self.properties.values():
+            if prop.type == "title" and prop.title:
+                return "".join(rt.plain_text for rt in prop.title)
+        return None
+
+    class Config:
+        extra = "allow"
 
 
 class NotionDatabaseSchemaProperty(BaseModel):
-    """Represents the configuration of a single property in a Notion database schema."""
+    """Represents the configuration of a single property in a Notion database schema.
 
+    The Notion API uses a *discriminated* schema where the payload under each
+    property key depends on the value of the ``type`` field.  For the purposes
+    of this project we do **not** need perfect type-level exhaustiveness – we
+    only need a structure that is (a) "good enough" for validation in unit
+    tests and (b) future-proof so we do not need to touch this class every time
+    we introduce a new property type.
+
+    Therefore we explicitly model the property types that are currently used in
+    the code-base / test-suite and fall back to ``extra = 'allow'`` for
+    everything else so that unexpected fields originating from the Notion API
+    are ignored instead of causing validation errors.
+    """
+
+    # --- base attributes ---------------------------------------------------------------------
     id: str
     name: str
-    type: str
+    type: str  # e.g. "title", "rich_text", "select", ...
     description: str | None = None
-    # Type-specific configuration (e.g., options for select, formula for formula)
-    # This is simplified; each type (select, multi_select, status, etc.) has its own object structure.
-    # Consider using a discriminated union based on 'type' for full modeling.
+
+    # --- type-specific configuration ---------------------------------------------------------
+    # The concrete JSON structure varies between property types.  We model the
+    # "big three" that we regularly inspect in the code (``select``,
+    # ``multi_select`` and ``status``) and keep an open dict for everything
+    # else.  This keeps the class compact while still giving us dot-access on
+    # the fields we care about in Python code.
     select: dict[str, Any] | None = None
     multi_select: dict[str, Any] | None = None
+    title: list[NotionRichText] | None = None
     status: dict[str, Any] | None = None
-    # ... other property type configurations
+
+    # Fallback for any additional, not yet modelled configuration blocks
+    other_config: dict[str, Any] | None = Field(
+        default=None,
+        description="Catch-all for configuration keys not explicitly modelled above.",
+    )
 
     class Config:
-        extra = "allow"  # Allow other property-specific config fields
+        extra = "allow"  # tolerate new/unknown fields returned by Notion
 
 
 class NotionDatabase(BaseModel):
-    """Simplified representation of a Notion Database object."""
+    """Representation of a Notion Database with helpers."""
 
     object: Literal["database"] = Field(description="Object type, always 'database'.")
     id: str
     created_time: str
     last_edited_time: str
+
+    # Metadata -------------------------------------------------------------
     title: list[NotionRichText]
-    description: list[NotionRichText]
+    description: list[NotionRichText] | None = None
+
+    # The heart of the database – the property schema
     properties: dict[str, NotionDatabaseSchemaProperty]
-    parent: dict[str, Any]
-    url: str
-    archived: bool
-    is_inline: bool
-    # icon, cover, created_by, last_edited_by can be added as needed
+
+    # Parent information and misc flags ------------------------------------
+    parent: dict[str, Any] | None = None
+    url: str | None = None
+    archived: bool | None = None
+    is_inline: bool | None = None
+    in_trash: bool | None = None
+    public_url: str | None = None
+
+    # ------------------------------------------------------------------
+    # Convenience helpers
+    # ------------------------------------------------------------------
+    def get_schema(self) -> dict[str, "NotionDatabaseSchemaProperty"]:
+        """Return the database property schema (alias for ``self.properties``)."""
+        return self.properties
+
+    def get_property(self, name: str) -> "NotionDatabaseSchemaProperty":
+        """Return a property value by name."""
+        return self.properties[name]
+
+    def title_text(self) -> str | None:
+        """Return plain-text title if a `Title` property exists."""
+        title_prop = self.properties.get("Title")
+        if title_prop and title_prop.title:
+            return "".join(rt.plain_text for rt in title_prop.title)
+        return None
+
+    class Config:
+        extra = "allow"

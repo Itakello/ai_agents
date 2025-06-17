@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.common.models import NotionPage
 from src.common.notion_service import NotionAPIError, NotionService
 
 
@@ -80,13 +81,14 @@ class TestNotionService:
                 "id": "test_database_id",
                 "created_time": "2022-10-24T22:54:00.000Z",
                 "last_edited_time": "2023-03-08T18:25:00.000Z",
-                "title": [{"type": "text", "text": {"content": "Job Applications"}}],
+                "title": [{"type": "text", "text": {"content": "Job Applications"}, "plain_text": "Job Applications"}],
                 "properties": {
-                    "Job Title": {"id": "title", "type": "title"},
-                    "Company": {"id": "comp", "type": "rich_text"},
+                    "Job Title": {"id": "title", "type": "title", "name": "Job Title"},
+                    "Company": {"id": "comp", "type": "rich_text", "name": "Company"},
                     "Status": {
                         "id": "stat",
                         "type": "status",
+                        "name": "Status",
                         "status": {
                             "options": [
                                 {"name": "Not started", "id": "1", "color": "default"},
@@ -95,11 +97,12 @@ class TestNotionService:
                             ]
                         },
                     },
-                    "Salary": {"id": "sal", "type": "number"},
-                    "Remote": {"id": "rem", "type": "checkbox"},
+                    "Salary": {"id": "sal", "type": "number", "name": "Salary"},
+                    "Remote": {"id": "rem", "type": "checkbox", "name": "Remote"},
                     "Skills": {
                         "id": "skills",
                         "type": "multi_select",
+                        "name": "Skills",
                         "multi_select": {
                             "options": [
                                 {"name": "Python", "id": "py", "color": "blue"},
@@ -142,13 +145,14 @@ class TestNotionService:
         mock_instance = mock_client.return_value
 
         # Act
-        result = service.get_page_content(page_id)
+        result = service.get_page(page_id)
 
         # Assert
         mock_instance.pages.retrieve.assert_called_once_with(page_id=page_id)
-        assert result["object"] == "page"
-        assert result["id"] == "test_page_id"
-        assert result["properties"]["Title"]["title"][0]["text"]["content"] == "Test Page"
+        assert isinstance(result, NotionPage)
+        assert result.object == "page"
+        assert result.id == "test_page_id"
+        assert result.title_text() == "Test Page"
 
     def test_get_page_content_error(self, mock_client: MagicMock) -> None:
         """Test error handling when retrieving page content fails."""
@@ -165,7 +169,7 @@ class TestNotionService:
 
         # Act & Assert
         with pytest.raises(NotionAPIError) as exc_info:
-            service.get_page_content(page_id)
+            service.get_page(page_id)
         assert f"Failed to fetch page {page_id}:" in str(exc_info.value)
 
     def test_update_page_property_success(self, mock_client: MagicMock) -> None:
@@ -185,10 +189,9 @@ class TestNotionService:
 
         # Assert
         mock_instance.pages.update.assert_called_once_with(page_id=page_id, properties={property_name: property_value})
-        # Verify the response follows real Notion API structure
-        assert result["object"] == "page"
-        assert result["id"] == "test_page_id"
-        assert "properties" in result
+        assert isinstance(result, NotionPage)
+        assert result.id == "test_page_id"
+        assert result.object == "page"
 
     def test_update_page_property_error(self, mock_client: MagicMock) -> None:
         """Test error handling when updating a page property fails."""
@@ -271,8 +274,8 @@ class TestNotionService:
         # Assert
         expected_properties = properties_update["properties"]
         mock_instance.pages.update.assert_called_once_with(page_id=page_id, properties=expected_properties)
-        assert result["object"] == "page"
-        assert result["id"] == "test_page_id"
+        assert isinstance(result, NotionPage)
+        assert result.id == "test_page_id"
 
     def test_update_page_properties_success_without_wrapper(self, mock_client: MagicMock) -> None:
         """Test successful update of multiple page properties without properties wrapper."""
@@ -294,8 +297,8 @@ class TestNotionService:
 
         # Assert
         mock_instance.pages.update.assert_called_once_with(page_id=page_id, properties=properties_update)
-        assert result["object"] == "page"
-        assert result["id"] == "test_page_id"
+        assert isinstance(result, NotionPage)
+        assert result.id == "test_page_id"
 
     def test_update_page_properties_error(self, mock_client: MagicMock) -> None:
         """Test error handling when updating multiple page properties fails."""
@@ -331,10 +334,13 @@ class TestNotionService:
         mock_instance.databases.retrieve.return_value = {
             "object": "database",
             "id": database_id,
+            "created_time": "2024-01-01T00:00:00.000Z",
+            "last_edited_time": "2024-01-01T00:00:00.000Z",
+            "title": [{"type": "text", "text": {"content": "Database"}, "plain_text": "Database"}],
             "properties": {
-                "Job Title": {"id": "title", "type": "title"},
-                "Company Website": {"id": "url", "type": "url"},
-                "Status": {"id": "stat", "type": "select"},
+                "Job Title": {"id": "title", "type": "title", "name": "Job Title"},
+                "Company Website": {"id": "url", "type": "url", "name": "Company Website"},
+                "Status": {"id": "stat", "type": "select", "name": "Status"},
             },
         }
 
@@ -380,8 +386,11 @@ class TestNotionService:
         mock_instance.databases.retrieve.return_value = {
             "object": "database",
             "id": database_id,
+            "created_time": "2024-01-01T00:00:00.000Z",
+            "last_edited_time": "2024-01-01T00:00:00.000Z",
+            "title": [{"type": "text", "text": {"content": "Database"}, "plain_text": "Database"}],
             "properties": {
-                property_name: {"id": "files", "type": "files"},
+                property_name: {"id": "files", "type": "files", "name": property_name},
             },
         }
         # Patch requests.post for S3 upload
@@ -436,8 +445,11 @@ class TestNotionService:
         mock_instance.databases.retrieve.return_value = {
             "object": "database",
             "id": database_id,
+            "created_time": "2024-01-01T00:00:00.000Z",
+            "last_edited_time": "2024-01-01T00:00:00.000Z",
+            "title": [{"type": "text", "text": {"content": "Database"}, "plain_text": "Database"}],
             "properties": {
-                property_name: {"id": "url", "type": "url"},
+                property_name: {"id": "url", "type": "url", "name": property_name},
             },
         }
         with pytest.raises(NotionAPIError, match="only supports 'files' properties"):
@@ -456,8 +468,11 @@ class TestNotionService:
         mock_instance.databases.retrieve.return_value = {
             "object": "database",
             "id": database_id,
+            "created_time": "2024-01-01T00:00:00.000Z",
+            "last_edited_time": "2024-01-01T00:00:00.000Z",
+            "title": [{"type": "text", "text": {"content": "Database"}, "plain_text": "Database"}],
             "properties": {
-                property_name: {"id": "files", "type": "files"},
+                property_name: {"id": "files", "type": "files", "name": property_name},
             },
         }
         # Patch client.request to raise error
@@ -481,8 +496,11 @@ class TestNotionService:
         mock_instance.databases.retrieve.return_value = {
             "object": "database",
             "id": database_id,
+            "created_time": "2024-01-01T00:00:00.000Z",
+            "last_edited_time": "2024-01-01T00:00:00.000Z",
+            "title": [{"type": "text", "text": {"content": "Database"}, "plain_text": "Database"}],
             "properties": {
-                property_name: {"id": "files", "type": "files"},
+                property_name: {"id": "files", "type": "files", "name": property_name},
             },
         }
         with patch.object(
