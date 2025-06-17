@@ -5,6 +5,7 @@ with support for .env files. It uses pydantic for validation and type conversion
 """
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -55,6 +56,26 @@ class Settings(BaseSettings):
     # Notion special properties
     JOB_URL_PROPERTY_NAME: str = "Job URL"
     TAILORED_RESUME_PROPERTY_NAME: str = "Resume"
+
+    # Required database schema configuration
+    REQUIRED_DATABASE_PROPERTIES: dict[str, dict[str, Any]] = {
+        "Title": {
+            "type": "title",
+            "description": "Job title",
+        },
+        "Company": {
+            "type": "rich_text",
+            "description": "Company name",
+        },
+        "Job URL": {
+            "type": "url",
+            "description": "URL of the job posting",
+        },
+        "Resume": {
+            "type": "files",
+            "description": "Tailored resume for this job",
+        },
+    }
 
     # Crawl4AI settings
     CRAWL4AI_HEADLESS: bool = True

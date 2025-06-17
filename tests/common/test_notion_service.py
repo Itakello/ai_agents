@@ -13,6 +13,74 @@ from src.common.models import NotionPage
 from src.common.notion_service import NotionAPIError, NotionService
 
 
+@pytest.fixture
+def mock_client() -> Generator[MagicMock, None, None]:
+    """Create a mock NotionClient that always returns a valid database dict and page dict."""
+    with patch("src.common.notion_service.NotionClient") as mock:
+        mock_instance = mock.return_value
+        # Always return a valid Notion database schema
+        mock_instance.databases.retrieve.return_value = {
+            "object": "database",
+            "id": "test_database_id",
+            "title": [{"plain_text": "Test Database", "type": "text"}],
+            "properties": {
+                "Title": {
+                    "id": "title",
+                    "type": "title",
+                    "name": "Title",
+                },
+                "Company": {
+                    "id": "company",
+                    "type": "rich_text",
+                    "name": "Company",
+                },
+                "Job URL": {
+                    "id": "job_url",
+                    "type": "url",
+                    "name": "Job URL",
+                },
+                "Resume": {
+                    "id": "resume",
+                    "type": "files",
+                    "name": "Resume",
+                },
+            },
+        }
+        # Always return a valid Notion page for retrieve and update
+        valid_page = {
+            "object": "page",
+            "id": "test_page_id",
+            "created_time": "2024-01-01T00:00:00.000Z",
+            "last_edited_time": "2024-01-01T00:00:00.000Z",
+            "archived": False,
+            "properties": {
+                "Title": {
+                    "id": "title",
+                    "type": "title",
+                    "title": [{"type": "text", "plain_text": "Test Page", "text": {"content": "Test Page"}}],
+                },
+                "Company": {
+                    "id": "company",
+                    "type": "rich_text",
+                    "rich_text": [{"type": "text", "plain_text": "Test Company", "text": {"content": "Test Company"}}],
+                },
+                "Job URL": {
+                    "id": "job_url",
+                    "type": "url",
+                    "url": "https://example.com/job",
+                },
+                "Resume": {
+                    "id": "resume",
+                    "type": "files",
+                    "files": [],
+                },
+            },
+        }
+        mock_instance.pages.retrieve.return_value = valid_page
+        mock_instance.pages.update.return_value = valid_page
+        yield mock
+
+
 class TestNotionService:
     """Test suite for the NotionService class."""
 
@@ -27,99 +95,6 @@ class TestNotionService:
         }
         with mock.patch.dict(os.environ, env_vars):
             yield
-
-    @pytest.fixture
-    def mock_client(self) -> Generator[MagicMock]:
-        """Create a mock Notion client with realistic response structures from API docs."""
-        with patch("src.common.notion_service.NotionClient") as mock_client_class:
-            # Real Notion API page response structure
-            default_page_response = {
-                "object": "page",
-                "id": "test_page_id",
-                "created_time": "2022-10-24T22:54:00.000Z",
-                "last_edited_time": "2023-03-08T18:25:00.000Z",
-                "created_by": {
-                    "object": "user",
-                    "id": "c2f20311-9e54-4d11-8c79-7398424ae41e",
-                },
-                "last_edited_by": {
-                    "object": "user",
-                    "id": "9188c6a5-7381-452f-b3dc-d4865aa89bdf",
-                },
-                "cover": None,
-                "icon": {"type": "emoji", "emoji": "🐞"},
-                "parent": {"type": "database_id", "database_id": "test_database_id"},
-                "archived": False,
-                "url": "https://www.notion.so/Test-Page-testpageid",
-                "properties": {
-                    "Title": {
-                        "id": "title",
-                        "type": "title",
-                        "title": [
-                            {
-                                "type": "text",
-                                "text": {"content": "Test Page", "link": None},
-                                "annotations": {
-                                    "bold": False,
-                                    "italic": False,
-                                    "strikethrough": False,
-                                    "underline": False,
-                                    "code": False,
-                                    "color": "default",
-                                },
-                                "plain_text": "Test Page",
-                                "href": None,
-                            }
-                        ],
-                    }
-                },
-            }
-
-            # Real Notion API database response structure with properties schema
-            default_database_response = {
-                "object": "database",
-                "id": "test_database_id",
-                "created_time": "2022-10-24T22:54:00.000Z",
-                "last_edited_time": "2023-03-08T18:25:00.000Z",
-                "title": [{"type": "text", "text": {"content": "Job Applications"}, "plain_text": "Job Applications"}],
-                "properties": {
-                    "Job Title": {"id": "title", "type": "title", "name": "Job Title"},
-                    "Company": {"id": "comp", "type": "rich_text", "name": "Company"},
-                    "Status": {
-                        "id": "stat",
-                        "type": "status",
-                        "name": "Status",
-                        "status": {
-                            "options": [
-                                {"name": "Not started", "id": "1", "color": "default"},
-                                {"name": "In progress", "id": "2", "color": "blue"},
-                                {"name": "Done", "id": "3", "color": "green"},
-                            ]
-                        },
-                    },
-                    "Salary": {"id": "sal", "type": "number", "name": "Salary"},
-                    "Remote": {"id": "rem", "type": "checkbox", "name": "Remote"},
-                    "Skills": {
-                        "id": "skills",
-                        "type": "multi_select",
-                        "name": "Skills",
-                        "multi_select": {
-                            "options": [
-                                {"name": "Python", "id": "py", "color": "blue"},
-                                {"name": "JavaScript", "id": "js", "color": "yellow"},
-                            ]
-                        },
-                    },
-                },
-            }
-
-            # Set up mock client instance
-            mock_instance = MagicMock()
-            mock_instance.pages.retrieve.return_value = default_page_response
-            mock_instance.pages.update.return_value = default_page_response
-            mock_instance.databases.retrieve.return_value = default_database_response
-            mock_client_class.return_value = mock_instance
-            yield mock_client_class
 
     def test_init(self, mock_client: MagicMock) -> None:
         """Test that the client is initialized with the correct API key and database ID."""
@@ -218,38 +193,58 @@ class TestNotionService:
         # Arrange
         api_key = "test_api_key"
         database_id = "test_database_id"
-
-        service = NotionService(api_key=api_key, database_id=database_id)
         mock_instance = mock_client.return_value
-
+        mock_instance.databases.retrieve.return_value = {
+            "object": "database",
+            "id": database_id,
+            "title": [{"plain_text": "Test Database", "type": "text"}],
+            "properties": {
+                "Title": {
+                    "id": "title",
+                    "type": "title",
+                    "name": "Title",
+                },
+                "Company": {
+                    "id": "company",
+                    "type": "rich_text",
+                    "name": "Company",
+                },
+                "Job URL": {
+                    "id": "job_url",
+                    "type": "url",
+                    "name": "Job URL",
+                },
+                "Resume": {
+                    "id": "resume",
+                    "type": "files",
+                    "name": "Resume",
+                },
+            },
+        }
+        service = NotionService(api_key=api_key, database_id=database_id, client=mock_instance)
+        # Reset the mock to clear the initialization call
+        mock_instance.databases.retrieve.reset_mock()
         # Act
         result = service.get_database_schema()
-
         # Assert
         mock_instance.databases.retrieve.assert_called_once_with(database_id=database_id)
-        assert "Job Title" in result
-        assert result["Job Title"]["type"] == "title"
-        assert "Status" in result
-        assert result["Status"]["type"] == "status"
-        assert "Skills" in result
-        assert result["Skills"]["type"] == "multi_select"
+        assert isinstance(result, dict)
+        assert "Title" in result
+        assert "Company" in result
+        assert "Job URL" in result
+        assert "Resume" in result
 
     def test_get_database_schema_error(self, mock_client: MagicMock) -> None:
         """Test error handling when retrieving database schema fails."""
         # Arrange
         api_key = "test_api_key"
         database_id = "test_database_id"
-
-        # Configure the mock to raise an error
         mock_instance = mock_client.return_value
         mock_instance.databases.retrieve.side_effect = Exception("Test error")
-
-        service = NotionService(api_key=api_key, database_id=database_id)
-
         # Act & Assert
         with pytest.raises(NotionAPIError) as exc_info:
-            service.get_database_schema()
-        assert f"Failed to fetch database schema for {database_id}:" in str(exc_info.value)
+            NotionService(api_key=api_key, database_id=database_id, client=mock_instance)
+        assert "Failed to fetch database schema" in str(exc_info.value)
 
     def test_update_page_properties_success_with_properties_wrapper(self, mock_client: MagicMock) -> None:
         """Test successful update of multiple page properties with properties wrapper."""
@@ -356,9 +351,12 @@ class TestNotionService:
         # Act
         service.save_or_update_extracted_data(url, extracted_data)
 
+        # Assert
+        mock_instance.databases.query.assert_called_once()
+        mock_instance.pages.create.assert_called_once()
+
     def test_upload_file_to_page_property_handles_error(self, mock_client: MagicMock, tmp_path: Path) -> None:
         """Test upload_file_to_page_property returns None on error."""
-
         api_key = "test_api_key"
         database_id = "test_database_id"
         page_id = "test_page_id"

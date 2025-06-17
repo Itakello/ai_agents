@@ -131,33 +131,14 @@ class NotionPage(BaseModel):
 
 
 class NotionDatabaseSchemaProperty(BaseModel):
-    """Represents the configuration of a single property in a Notion database schema.
+    """Represents the configuration of a single property in a Notion database schema."""
 
-    The Notion API uses a *discriminated* schema where the payload under each
-    property key depends on the value of the ``type`` field.  For the purposes
-    of this project we do **not** need perfect type-level exhaustiveness – we
-    only need a structure that is (a) "good enough" for validation in unit
-    tests and (b) future-proof so we do not need to touch this class every time
-    we introduce a new property type.
-
-    Therefore we explicitly model the property types that are currently used in
-    the code-base / test-suite and fall back to ``extra = 'allow'`` for
-    everything else so that unexpected fields originating from the Notion API
-    are ignored instead of causing validation errors.
-    """
-
-    # --- base attributes ---------------------------------------------------------------------
     id: str
     name: str
     type: str  # e.g. "title", "rich_text", "select", ...
     description: str | None = None
 
-    # --- type-specific configuration ---------------------------------------------------------
-    # The concrete JSON structure varies between property types.  We model the
-    # "big three" that we regularly inspect in the code (``select``,
-    # ``multi_select`` and ``status``) and keep an open dict for everything
-    # else.  This keeps the class compact while still giving us dot-access on
-    # the fields we care about in Python code.
+    # Type-specific configuration
     select: dict[str, Any] | None = None
     multi_select: dict[str, Any] | None = None
     title: list[NotionRichText] | None = None
@@ -178,17 +159,11 @@ class NotionDatabase(BaseModel):
 
     object: Literal["database"] = Field(description="Object type, always 'database'.")
     id: str
-    created_time: str
-    last_edited_time: str
-
-    # Metadata -------------------------------------------------------------
     title: list[NotionRichText]
     description: list[NotionRichText] | None = None
-
-    # The heart of the database – the property schema
     properties: dict[str, NotionDatabaseSchemaProperty]
 
-    # Parent information and misc flags ------------------------------------
+    # Parent information and misc flags
     parent: dict[str, Any] | None = None
     url: str | None = None
     archived: bool | None = None
@@ -196,9 +171,7 @@ class NotionDatabase(BaseModel):
     in_trash: bool | None = None
     public_url: str | None = None
 
-    # ------------------------------------------------------------------
     # Convenience helpers
-    # ------------------------------------------------------------------
     def get_schema(self) -> dict[str, "NotionDatabaseSchemaProperty"]:
         """Return the database property schema (alias for ``self.properties``)."""
         return self.properties

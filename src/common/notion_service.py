@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
+from loguru import logger
 from notion_client import Client as NotionClient
 
 from src.common.models import (
@@ -27,21 +28,125 @@ class NotionAPIError(Exception):
 
 
 class NotionService:
-    """A service class for interacting with the Notion API.
+    """Service for interacting with the Notion API."""
 
-    This class provides methods to fetch page content and update page properties
-    in a Notion database.
-    """
-
-    def __init__(self, api_key: str, database_id: str) -> None:
-        """Initialize the NotionService with API key and database ID.
+    def __init__(self, api_key: str | None = None, database_id: str | None = None, client: Any | None = None) -> None:
+        """Initialize the NotionService.
 
         Args:
-            api_key: The Notion API integration token.
-            database_id: The ID of the Notion database to interact with.
+            api_key: Optional Notion API key. If not provided, uses the value from settings.
+            database_id: Optional Notion database ID. If not provided, uses the value from settings.
+            client: Optional Notion client. If not provided, a new client is created using the API key.
         """
-        self.client = NotionClient(auth=api_key)
-        self.database_id = database_id
+        settings = get_settings()
+        self.api_key = api_key or settings.NOTION_API_KEY
+        self.database_id = database_id or settings.NOTION_DATABASE_ID
+        self.client = client or NotionClient(auth=self.api_key)
+        self._verify_database_schema()
+
+    def _verify_database_schema(self) -> None:
+        """Verify that the database has all required properties with correct types."""
+        schema = self.get_database_schema()
+        missing_props, type_mismatches = self._check_schema(schema)
+
+        if missing_props or type_mismatches:
+            logger.warning(
+                "Database schema issues found: missing=%s, type_mismatches=%s",
+                missing_props,
+                type_mismatches,
+            )
+            self._fix_schema(schema, missing_props, type_mismatches)
+
+    def _check_schema(self, schema: dict[str, Any]) -> tuple[list[str], list[tuple[str, str, str]]]:
+        """Check if the database schema matches required properties.
+
+        Args:
+            schema: Current database schema from Notion API
+
+        Returns:
+            Tuple of (missing_properties, type_mismatches)
+        """
+        missing_props = []
+        type_mismatches = []
+        settings = get_settings()
+
+        for prop_name, prop_config in settings.REQUIRED_DATABASE_PROPERTIES.items():
+            if prop_name not in schema:
+                missing_props.append(prop_name)
+                continue
+
+            current_type = schema[prop_name]["type"]
+            required_type = prop_config["type"]
+            if current_type != required_type:
+                type_mismatches.append((prop_name, current_type, required_type))
+
+        return missing_props, type_mismatches
+
+    def _fix_schema(
+        self,
+        schema: dict[str, Any],
+        missing_props: list[str],
+        type_mismatches: list[tuple[str, str, str]],
+    ) -> None:
+        """Fix database schema issues by adding missing properties and updating types.
+
+        Args:
+            schema: Current database schema
+            missing_props: List of missing property names
+            type_mismatches: List of (property_name, current_type, required_type) tuples
+        """
+        settings = get_settings()
+        # Add missing properties
+        for prop_name in missing_props:
+            prop_config = settings.REQUIRED_DATABASE_PROPERTIES[prop_name]
+            self.update_schema(
+                {
+                    "properties": {
+                        prop_name: {
+                            "type": prop_config["type"],
+                            "name": prop_name,
+                            "description": prop_config.get("description", ""),
+                        }
+                    }
+                }
+            )
+            logger.info("Added missing property: %s (%s)", prop_name, prop_config["type"])
+
+        # Update property types
+        for prop_name, current_type, required_type in type_mismatches:
+            prop_config = settings.REQUIRED_DATABASE_PROPERTIES[prop_name]
+            self.update_schema(
+                {
+                    "properties": {
+                        prop_name: {
+                            "type": required_type,
+                            "name": prop_name,
+                            "description": prop_config.get("description", ""),
+                        }
+                    }
+                }
+            )
+            logger.info(
+                "Updated property type: %s (%s -> %s)",
+                prop_name,
+                current_type,
+                required_type,
+            )
+
+    def update_schema(self, schema_update: dict[str, Any]) -> None:
+        """Update the database schema.
+
+        Args:
+            schema_update: Schema update to apply
+        """
+        try:
+            self.client.databases.update(
+                database_id=self.database_id,
+                properties=schema_update["properties"],
+            )
+        except Exception as e:
+            logger.error("Failed to update database schema: %s", str(e))
+            raise
 
     def get_page(self, page_id: str) -> NotionPage:
         """Fetch the content of a Notion page by its ID.
