@@ -63,17 +63,17 @@ class Settings(BaseSettings):
             "type": "title",
             "description": "Job title",
         },
-        "Company": {
+        "Company Name": {
             "type": "rich_text",
             "description": "Company name",
         },
         "Job URL": {
             "type": "url",
-            "description": "URL of the job posting",
+            "description": "URL of the job posting #exclude",
         },
         "Resume": {
             "type": "files",
-            "description": "Tailored resume for this job",
+            "description": "Tailored resume for this job #exclude",
         },
     }
 

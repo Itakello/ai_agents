@@ -16,7 +16,22 @@ from src.common.services.notion_sync_service import NotionSyncService
 def mock_api_service() -> MagicMock:
     """Create a mock NotionAPIService."""
     service = MagicMock()
-    service.get_database = AsyncMock()
+    # Provide a minimal yet valid database schema so that schema validation in
+    # ``NotionSyncService`` passes during tests.
+    minimal_db_payload: dict[str, Any] = {
+        "object": "database",
+        "id": "test-db-id",
+        "title": [],
+        "properties": {
+            "Title": {"id": "prop_title", "type": "title", "name": "Title", "title": []},
+            "Job URL": {"id": "prop_url", "type": "url", "name": "Job URL", "url": {}},
+        },
+    }
+
+    service.get_database = AsyncMock(return_value=NotionDatabase.model_validate(minimal_db_payload))
+    # ``_ensure_required_properties`` may attempt to update the database – we
+    # simply echo back the same (already valid) payload in our mock.
+    service.update_database = AsyncMock(return_value=NotionDatabase.model_validate(minimal_db_payload))
     service.get_page = AsyncMock()
     service.update_page = AsyncMock()
     service.create_page = AsyncMock()

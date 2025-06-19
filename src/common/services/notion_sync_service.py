@@ -19,6 +19,8 @@ class NotionSyncService:
         api_service: NotionAPIService | None = None,
         file_service: NotionFileService | None = None,
         database_id: str | None = None,
+        *,
+        auto_ensure_schema: bool = True,
     ) -> None:
         """Initialize the Notion sync service.
 
@@ -26,11 +28,19 @@ class NotionSyncService:
             api_service: Optional Notion API service. If not provided, a new one is created.
             file_service: Optional Notion file service. If not provided, a new one is created.
             database_id: Optional Notion database ID. If not provided, uses the value from settings.
+            auto_ensure_schema: When ``True`` (default) the service verifies and
+                patches the database schema immediately.  Disable for special
+                scenarios (e.g. offline tests) where no API calls should be made.
         """
         settings = get_settings()
         self.api_service = api_service or NotionAPIService()
         self.file_service = file_service or NotionFileService()
         self.database_id = database_id or settings.NOTION_DATABASE_ID
+
+        # Ensure database schema once during initialisation.  Because this is a
+        # synchronous context we have to drive the coroutine manually.
+        if auto_ensure_schema:
+            self._ensure_required_properties_sync()
 
     _cached_database: NotionDatabase | None = None  # class-level cache per instance
 
@@ -149,6 +159,9 @@ class NotionSyncService:
             NotionAPIError: If there's an error searching for the page.
         """
         try:
+            # Ensure the database contains the URL property before querying.
+            await self._ensure_required_properties()
+
             settings = get_settings()
             url_property = url_property_name or settings.JOB_URL_PROPERTY_NAME
             if not url_property:
@@ -181,7 +194,17 @@ class NotionSyncService:
         try:
             return await self.api_service.query_database(database_id, filter)
         except Exception as e:
-            raise NotionAPIError(f"Failed to query database: {str(e)}") from e
+            # Detect the specific "missing property" error coming from Notion and
+            # attempt to automatically patch the database schema once before
+            # re-trying the query.
+            error_msg = str(e)
+            if "Could not find property" in error_msg:
+                # Best-effort schema fix – if this still fails we'll bubble up
+                # the original error for the caller to handle.
+                await self._ensure_required_properties(database_id)
+                return await self.api_service.query_database(database_id, filter)
+
+            raise NotionAPIError(f"Failed to query database: {error_msg}") from e
 
     async def save_or_update_extracted_data(
         self, database_id: str, url: str, extracted_data: dict[str, Any]
@@ -200,6 +223,11 @@ class NotionSyncService:
             NotionAPIError: If there's an error saving or updating the data.
         """
         try:
+            # Make sure all required properties (particularly the URL one) are
+            # present in the database before we attempt any operations that
+            # rely on them.
+            await self._ensure_required_properties(database_id)
+
             # Find existing page by URL
             url_property = get_settings().JOB_URL_PROPERTY_NAME
 
@@ -252,3 +280,102 @@ class NotionSyncService:
         self.api_service = NotionAPIService()
 
         return {name: prop.model_dump(exclude_none=True) for name, prop in self._cached_database.properties.items()}
+
+    async def _ensure_required_properties(self, database_id: str | None = None) -> None:
+        """Ensure that the database contains all required properties.
+
+        This helper fetches the current database schema and compares it
+        against the *REQUIRED_DATABASE_PROPERTIES* declared in the global
+        ``Settings`` instance.  Any missing properties are created via the
+        Notion *Update a database* endpoint so that subsequent queries or
+        page creations that rely on those fields succeed.
+        """
+
+        db_id = database_id or self.database_id
+        settings = get_settings()
+
+        # ------------------------------------------------------------------
+        # 1. Retrieve (and cache) the database definition
+        # ------------------------------------------------------------------
+        if self._cached_database is None or self._cached_database.id != db_id:
+            self._cached_database = await self.get_database(db_id)
+
+        database = self._cached_database
+
+        # ------------------------------------------------------------------
+        # 2. Work out which required properties are missing
+        # ------------------------------------------------------------------
+        required_property_defs: dict[str, dict[str, Any]] = settings.REQUIRED_DATABASE_PROPERTIES
+        required_property_types = {name: cfg["type"] for name, cfg in required_property_defs.items()}
+
+        missing = database.verify_schema(required_property_types)
+
+        # Special-case: if the *Title* property is considered missing but
+        # another property of type "title" already exists, we'll **rename** it
+        # instead of creating a second title column (which Notion forbids).
+
+        if "Title" in missing:
+            # Find the first property whose type is "title"
+            for old_name, prop in database.properties.items():
+                if prop.type == "title":
+                    # Build rename payload – keep the same type but change the
+                    # display name to "Title".
+                    rename_payload: dict[str, Any] = {old_name: {"name": "Title"}}
+                    # Preserve / set description if provided in config.
+                    title_desc = required_property_defs.get("Title", {}).get("description")
+                    if title_desc:
+                        rename_payload[old_name]["description"] = title_desc
+                    try:
+                        self._cached_database = await self.api_service.update_database(db_id, rename_payload)
+                    except Exception:  # pragma: no cover
+                        raise
+
+                    # Refresh local reference and recompute missing set
+                    database = self._cached_database
+                    missing = database.verify_schema(required_property_types)
+                    break
+
+        # After the rename attempt, remove any properties now satisfied.
+        if not missing:
+            return
+
+        # ------------------------------------------------------------------
+        # 3. Build payload for any *remaining* missing properties
+        # ------------------------------------------------------------------
+        update_payload: dict[str, Any] = {}
+        for prop_name in missing:
+            # Skip title property if we've already renamed it
+            if prop_name == "Title":
+                continue
+            prop_type = required_property_types[prop_name]
+            prop_desc = required_property_defs[prop_name].get("description")
+
+            new_prop_obj: dict[str, Any] = {prop_type: {}}
+            if prop_desc:
+                new_prop_obj["description"] = prop_desc
+
+            update_payload[prop_name] = new_prop_obj
+
+        if update_payload:
+            # ------------------------------------------------------------------
+            # 4. Send update request and refresh cache
+            # ------------------------------------------------------------------
+            try:
+                self._cached_database = await self.api_service.update_database(db_id, update_payload)
+            except Exception:  # pragma: no cover
+                raise
+
+    def _ensure_required_properties_sync(self) -> None:
+        """Ensure that the database contains all required properties.
+
+        This helper fetches the current database schema and compares it
+        against the *REQUIRED_DATABASE_PROPERTIES* declared in the global
+        ``Settings`` instance.  Any missing properties are created via the
+        Notion *Update a database* endpoint so that subsequent queries or
+        page creations that rely on those fields succeed.
+        """
+
+        async def _inner() -> None:
+            await self._ensure_required_properties()
+
+        asyncio.run(_inner())
