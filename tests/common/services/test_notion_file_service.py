@@ -44,7 +44,7 @@ async def test_create_file_upload_object(file_service: NotionFileService) -> Non
         return response
 
     with patch("requests.post", side_effect=mock_post) as mock_post_func:
-        upload_id, upload_url = await file_service.create_file_upload_object("test.txt")
+        upload_id, upload_url = await file_service.create_file_upload_object("test.txt", "text/plain")
         assert upload_id == "test-upload-id"
         assert upload_url == "https://example.com/upload"
         mock_post_func.assert_called_once()
@@ -95,7 +95,7 @@ async def test_upload_file(file_service: NotionFileService, mock_file: Path) -> 
 async def test_create_file_upload_object_error(file_service: NotionFileService) -> None:
     with patch("requests.post", side_effect=Exception("API Error")):
         with pytest.raises(NotionFileError) as exc_info:
-            await file_service.create_file_upload_object("test.txt")
+            await file_service.create_file_upload_object("test.txt", "text/plain")
         assert "Failed to create file upload object" in str(exc_info.value)
 
 

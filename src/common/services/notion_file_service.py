@@ -21,11 +21,12 @@ class NotionFileService:
         settings = get_settings()
         self.api_key = api_key or settings.NOTION_API_KEY
 
-    async def create_file_upload_object(self, file_name: str) -> tuple[str, str]:
+    async def create_file_upload_object(self, file_name: str, mime_type: str) -> tuple[str, str]:
         """Create a file upload object in Notion.
 
         Args:
             file_name: The name of the file to upload.
+            mime_type: The MIME type of the file to upload.
 
         Returns:
             Tuple of (upload_id, upload_url).
@@ -34,13 +35,16 @@ class NotionFileService:
             NotionFileError: If there's an error creating the upload object.
         """
         try:
+            # The Direct Upload flow expects a call to the /file_uploads endpoint.
+            payload = {"filename": file_name, "content_type": mime_type}
+
             resp = requests.post(
-                "https://api.notion.com/v1/files",
+                "https://api.notion.com/v1/file_uploads",
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
                     "Notion-Version": "2022-06-28",
                 },
-                json={"name": file_name, "type": "file"},
+                json=payload,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -94,12 +98,11 @@ class NotionFileService:
             mime_type = "application/octet-stream"
 
         try:
-            upload_id, upload_url = await self.create_file_upload_object(file_path.name)
+            upload_id, upload_url = await self.create_file_upload_object(file_path.name, mime_type)
 
             await self.upload_file_contents(upload_url, file_path, mime_type)
 
-            file_url = f"https://api.notion.com/v1/files/{upload_id}"
-
+            # Attach the uploaded file to the page property using the `file_upload` id.
             resp = requests.patch(
                 f"https://api.notion.com/v1/pages/{page_id}",
                 headers={
@@ -109,7 +112,16 @@ class NotionFileService:
                 },
                 json={
                     "properties": {
-                        property_name: {"files": [{"type": "file", "name": file_path.name, "file": {"url": file_url}}]}
+                        property_name: {
+                            "type": "files",
+                            "files": [
+                                {
+                                    "type": "file_upload",
+                                    "file_upload": {"id": upload_id},
+                                    "name": file_path.name,
+                                }
+                            ],
+                        }
                     }
                 },
             )

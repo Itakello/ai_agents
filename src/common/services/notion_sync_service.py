@@ -123,14 +123,11 @@ class NotionSyncService:
             NotionFileError: If there's an error with the file operation.
         """
         try:
+            # Delegate the heavy lifting to the file service.
             await self.file_service.upload_file(file_path, page_id, property_name)
 
-            page = await self.get_page(page_id)
-            if not page:
-                raise NotionAPIError(f"Page {page_id} not found")
-
-            properties = {property_name: {"files": [{"type": "file", "name": file_path}]}}
-            return await self.update_page(page_id, properties)
+            # Return the refreshed page to the caller so they get the latest state.
+            return await self.get_page(page_id)
         except Exception as e:
             if isinstance(e, NotionFileError):
                 raise
