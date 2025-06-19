@@ -224,15 +224,6 @@ class TailorService:
         for reduction_attempt in range(1, settings.PDF_REDUCTION_MAX_RETRIES + 1):
             logger.info(f"PDF reduction attempt {reduction_attempt}/{settings.PDF_REDUCTION_MAX_RETRIES}")
 
-            try:
-                overflow_page_text = self.latex_service.get_text_from_pdf_page(loop_pdf_path, 2)
-                if not overflow_page_text:
-                    raise RuntimeError("Extracted overflow text was empty.")
-            except (RuntimeError, FileNotFoundError) as e:
-                err_msg = f"Critical: Could not get overflow text from page 2 of {loop_pdf_path}. Reason: {e}. Terminating reduction."
-                logger.critical(err_msg)
-                raise RuntimeError(err_msg) from e
-
             # Build reduction prompt from template instead of hardcoding
             prompts_dir = Path(settings.PROMPTS_DIRECTORY)
             reduction_prompt_path = prompts_dir / settings.PDF_REDUCTION_PROMPT_FILENAME
@@ -242,7 +233,6 @@ class TailorService:
             reduction_user_prompt = reduction_prompt_template.format(
                 page_count=str(loop_page_count),
                 goal_pages=str(settings.GOAL_PAGE_COUNT),
-                overflow_page_text=overflow_page_text,
                 current_tex_content=loop_tex_content,
             )
 

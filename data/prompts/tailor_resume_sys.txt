@@ -44,7 +44,7 @@ Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when 
 
 #### Reduction Principles
 1. Preserve key achievements and metrics; rewrite or condense rather than delete wholesale where possible.
-2. Use the overflow text length merely as a gauge for how much to condense; do **not** target or copy that text directly.
+2. Use the overflow text length merely as a gauge for how much to condense; do **not** target that text directly. When trimming, evaluate the entire résumé and feel free to rewrite, condense, or remove less critical items, bullet points, or whole sub-sections anywhere in the document—not just within the overflow portion.
 3. Do **not** state that text must be removed; simply supply the concise replacement so the final PDF meets the goal.
 4. Iterate until the résumé meets the page goal.
 

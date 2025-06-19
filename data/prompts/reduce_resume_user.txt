@@ -1,11 +1,5 @@
 PAGES {page_count}/{goal_pages}
 
-OVERFLOW PAGE TEXT
-------------------
-```
-{overflow_page_text}
-```
-
 CURRENT TEX SOURCE
 ------------------
 ```

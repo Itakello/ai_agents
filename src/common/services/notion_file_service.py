@@ -102,7 +102,19 @@ class NotionFileService:
 
             await self.upload_file_contents(upload_url, file_path, mime_type)
 
-            # Attach the uploaded file to the page property using the `file_upload` id.
+            # Retrieve current files for the property so we can append the newly uploaded file.
+            existing_files = await self.get_existing_files(page_id, property_name)
+
+            # Append the new file to existing ones (if any)
+            updated_files = existing_files + [
+                {
+                    "type": "file_upload",
+                    "file_upload": {"id": upload_id},
+                    "name": file_path.name,
+                }
+            ]
+
+            # Attach the combined file list back to the page property
             resp = requests.patch(
                 f"https://api.notion.com/v1/pages/{page_id}",
                 headers={
@@ -114,13 +126,7 @@ class NotionFileService:
                     "properties": {
                         property_name: {
                             "type": "files",
-                            "files": [
-                                {
-                                    "type": "file_upload",
-                                    "file_upload": {"id": upload_id},
-                                    "name": file_path.name,
-                                }
-                            ],
+                            "files": updated_files,
                         }
                     }
                 },
@@ -128,6 +134,39 @@ class NotionFileService:
             resp.raise_for_status()
         except Exception as e:
             raise NotionFileError(f"Failed to upload file: {str(e)}") from e
+
+    async def get_existing_files(self, page_id: str, property_name: str) -> list[dict]:
+        """Retrieve the current list of files stored in the given page property.
+
+        If the request fails or the property does not exist / contains no files, an empty list is returned.
+
+        Args:
+            page_id: The Notion page ID.
+            property_name: The name of the property whose files we want to fetch.
+
+        Returns:
+            A list of file objects as returned by the Notion API (can be empty).
+        """
+        try:
+            resp = requests.get(
+                f"https://api.notion.com/v1/pages/{page_id}",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Notion-Version": "2022-06-28",
+                },
+            )
+            resp.raise_for_status()
+            page_data = resp.json()
+
+            prop_val = page_data.get("properties", {}).get(property_name, {})
+            if isinstance(prop_val, dict):
+                files = prop_val.get("files", [])
+                if isinstance(files, list):
+                    return files
+            return []
+        except Exception:
+            # We deliberately swallow errors here to avoid data loss in callers that only want to append.
+            return []
 
     async def download_file(self, file_url: str) -> bytes:
         """Download a file from Notion.

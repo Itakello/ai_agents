@@ -72,6 +72,30 @@ async def test_upload_file(file_service: NotionFileService, mock_file: Path) -> 
         response.raise_for_status = MagicMock()
         return response
 
+    def mock_get(*args: Any, **kwargs: Any) -> MagicMock:
+        """Mock the GET call that retrieves the existing page properties."""
+        response = MagicMock()
+        response.status_code = 200
+        # Return a page object with an existing files list so we can verify that the service attempts to append.
+        response.json = MagicMock(
+            return_value={
+                "properties": {
+                    "test-property": {
+                        "type": "files",
+                        "files": [
+                            {
+                                "type": "file",
+                                "file": {"url": "https://example.com/old.pdf", "expiry_time": "2025-01-01T00:00:00Z"},
+                                "name": "old.pdf",
+                            }
+                        ],
+                    }
+                }
+            }
+        )
+        response.raise_for_status = MagicMock()
+        return response
+
     def mock_patch(*args: Any, **kwargs: Any) -> MagicMock:
         response = MagicMock()
         response.status_code = 200
@@ -80,6 +104,7 @@ async def test_upload_file(file_service: NotionFileService, mock_file: Path) -> 
 
     with (
         patch("requests.post", side_effect=mock_post) as mock_post_func,
+        patch.object(NotionFileService, "get_existing_files", return_value=[]) as mock_get_files,
         patch("requests.patch", side_effect=mock_patch) as mock_patch_func,
     ):
         await file_service.upload_file(
@@ -88,6 +113,7 @@ async def test_upload_file(file_service: NotionFileService, mock_file: Path) -> 
             "test-property",
         )
         mock_post_func.assert_called()
+        mock_get_files.assert_called()
         mock_patch_func.assert_called()
 
 
@@ -129,3 +155,49 @@ async def test_upload_file_nonexistent_file(file_service: NotionFileService) -> 
             "test-property",
         )
     assert "File does not exist" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# New tests: get_existing_files
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_existing_files_success(file_service: NotionFileService) -> None:
+    """Should return the existing list of files when the page contains them."""
+
+    def mock_get(*args: Any, **kwargs: Any) -> MagicMock:
+        response = MagicMock()
+        response.status_code = 200
+        response.json = MagicMock(
+            return_value={
+                "properties": {
+                    "resume": {
+                        "type": "files",
+                        "files": [
+                            {
+                                "type": "file",
+                                "file": {"url": "https://example.com/file.pdf", "expiry_time": "2025-01-01"},
+                                "name": "file.pdf",
+                            }
+                        ],
+                    }
+                }
+            }
+        )
+        response.raise_for_status = MagicMock()
+        return response
+
+    with patch("requests.get", side_effect=mock_get):
+        files = await file_service.get_existing_files("page-id", "resume")
+        assert isinstance(files, list)
+        assert files and files[0]["name"] == "file.pdf"
+
+
+@pytest.mark.asyncio
+async def test_get_existing_files_error(file_service: NotionFileService) -> None:
+    """Should return empty list when GET fails."""
+
+    with patch("requests.get", side_effect=Exception("API Error")):
+        files = await file_service.get_existing_files("page-id", "resume")
+        assert files == []
