@@ -13,8 +13,10 @@ from crawl4ai import AsyncWebCrawler  # type: ignore
 from crawl4ai.async_configs import BrowserConfig, CacheMode, CrawlerRunConfig  # type: ignore
 from crawl4ai.models import CrawlResultContainer  # type: ignore
 
-from ..common.llm_clients import OpenAIClient
-from ..common.notion_service import NotionService
+from src.common.schemas.openai_schema import OpenAISchema
+
+from ..common.services.notion_sync_service import NotionSyncService
+from ..common.services.openai_service import OpenAIService
 from ..common.utils import read_file_content, replace_prompt_placeholders
 from ..core.config import get_settings
 from .schema_utils import create_openai_schema_from_notion_database
@@ -34,16 +36,19 @@ class ExtractorService:
     """
 
     def __init__(
-        self, openai_client: OpenAIClient, notion_service: NotionService, add_properties_options: bool = True
+        self,
+        openai_service: OpenAIService,
+        notion_service: NotionSyncService | None = None,
+        add_properties_options: bool = True,
     ) -> None:
-        """Initialize the ExtractorService with required clients.
+        """Initialize the ExtractorService with required services.
 
         Args:
-            openai_client: An initialized OpenAI client for LLM interactions.
-            notion_service: An initialized Notion service for database operations.
+            openai_service: An initialized OpenAI service for LLM interactions.
+            notion_service: Optional Notion sync service for database operations (not used directly yet).
             add_properties_options: Whether to add options to select/multi_select properties.
         """
-        self.openai_client = openai_client
+        self.openai_service = openai_service
         self.notion_service = notion_service
         self.add_properties_options = add_properties_options
 
@@ -137,17 +142,15 @@ class ExtractorService:
         prompt_template = read_file_content(prompt_path)
         return replace_prompt_placeholders(prompt_template, CONTENT=markdown_content)
 
-    def _extract_structured_metadata(
-        self, prompt: str, model_name: str, openai_schema: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _extract_structured_metadata(self, prompt: str, model_name: str, openai_schema: OpenAISchema) -> dict[str, Any]:
         """
         Use OpenAI for structured metadata extraction.
         """
-        return self.openai_client.get_structured_response(
+        return self.openai_service.get_structured_response(
             sys_prompt=prompt,
             user_prompt=None,
             model_name=model_name,
-            schema=openai_schema,
+            schema=openai_schema.dict(),
             use_web_search=False,
         )
 

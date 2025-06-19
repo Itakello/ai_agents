@@ -7,8 +7,8 @@ import os
 import sys
 from pathlib import Path
 
-from _pytest.monkeypatch import MonkeyPatch
 from loguru import logger
+from pytest import MonkeyPatch
 
 
 def test_logger_configures_on_import(monkeypatch: MonkeyPatch) -> None:

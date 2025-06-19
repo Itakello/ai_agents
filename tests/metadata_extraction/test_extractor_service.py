@@ -21,7 +21,7 @@ class TestExtractorService:
 
     @pytest.fixture
     def mock_notion_service(self) -> Generator[MagicMock]:
-        """Create a mock Notion service."""
+        """Create a mock Notion sync service."""
         mock_service = MagicMock()
         yield mock_service
 
@@ -97,5 +97,5 @@ class TestExtractorService:
         service = ExtractorService(mock_openai_client, mock_notion_service)
 
         # Assert
-        assert service.openai_client == mock_openai_client
+        assert service.openai_service == mock_openai_client
         assert service.notion_service == mock_notion_service

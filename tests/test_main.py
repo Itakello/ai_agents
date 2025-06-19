@@ -1,6 +1,6 @@
 """Tests for the main application functionality."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -46,8 +46,8 @@ class TestMain:
     """Test the main function of the Job Finder Assistant."""
 
     @patch("src.main.ExtractorService")
-    @patch("src.main.NotionService")
-    @patch("src.main.OpenAIClient")
+    @patch("src.main.NotionSyncService")
+    @patch("src.main.OpenAIService")
     @patch("src.main.Settings")
     @patch("src.main.display_results")
     @patch("src.main.parse_arguments")
@@ -56,7 +56,7 @@ class TestMain:
         mock_parse_arguments: MagicMock,
         mock_display_results: MagicMock,
         mock_settings: MagicMock,
-        mock_openai_client: MagicMock,
+        mock_openai_service: MagicMock,
         mock_notion_service: MagicMock,
         mock_extractor_service: MagicMock,
     ) -> None:
@@ -79,6 +79,7 @@ class TestMain:
         mock_settings.return_value = mock_settings_instance
 
         mock_notion_service_instance = MagicMock()
+        mock_notion_service_instance.save_or_update_extracted_data = AsyncMock()
         mock_database_schema = {
             "job_title": {"type": "title"},
             "company": {"type": "rich_text"},
@@ -101,8 +102,8 @@ class TestMain:
 
         # Verify all components were called correctly
         mock_settings.assert_called_once()
-        mock_openai_client.assert_called_once_with(api_key="test-openai-key")
-        mock_notion_service.assert_called_once_with(api_key="test-notion-key", database_id="test-db-id")
+        mock_openai_service.assert_called_once_with(api_key="test-openai-key")
+        mock_notion_service.assert_called_once_with(database_id="test-db-id")
         mock_extractor_service.assert_called_once()
 
         mock_notion_service_instance.get_database_schema.assert_called_once()
@@ -144,15 +145,15 @@ class TestMain:
             main()
 
     @patch("src.main.ExtractorService")
-    @patch("src.main.NotionService")
-    @patch("src.main.OpenAIClient")
+    @patch("src.main.NotionSyncService")
+    @patch("src.main.OpenAIService")
     @patch("src.main.Settings")
     @patch("src.main.parse_arguments")
     def test_main_notion_service_error(
         self,
         mock_parse_arguments: MagicMock,
         mock_settings: MagicMock,
-        mock_openai_client: MagicMock,
+        mock_openai_service: MagicMock,
         mock_notion_service: MagicMock,
         mock_extractor_service: MagicMock,
     ) -> None:
@@ -181,15 +182,15 @@ class TestMain:
         assert exc_info.value.code == 1
 
     @patch("src.main.ExtractorService")
-    @patch("src.main.NotionService")
-    @patch("src.main.OpenAIClient")
+    @patch("src.main.NotionSyncService")
+    @patch("src.main.OpenAIService")
     @patch("src.main.Settings")
     @patch("src.main.parse_arguments")
     def test_main_extraction_error(
         self,
         mock_parse_arguments: MagicMock,
         mock_settings: MagicMock,
-        mock_openai_client: MagicMock,
+        mock_openai_service: MagicMock,
         mock_notion_service: MagicMock,
         mock_extractor_service: MagicMock,
     ) -> None:
@@ -210,13 +211,8 @@ class TestMain:
         mock_settings.return_value = mock_settings_instance
 
         mock_notion_service_instance = MagicMock()
-        mock_database_schema = {"job_title": {"type": "title"}}
-        mock_notion_service_instance.get_database_schema.return_value = mock_database_schema
+        mock_notion_service_instance.get_database_schema.side_effect = Exception("Extraction error")
         mock_notion_service.return_value = mock_notion_service_instance
-
-        mock_extractor_service_instance = MagicMock()
-        mock_extractor_service_instance.extract_metadata_from_job_url.side_effect = Exception("Extraction error")
-        mock_extractor_service.return_value = mock_extractor_service_instance
 
         with pytest.raises(SystemExit) as exc_info:
             main()

@@ -1,6 +1,8 @@
 import random
 from typing import Any
 
+from src.common.schemas.openai_schema import OpenAISchema
+
 
 def notion_property_to_openai_schema(notion_property: dict[str, Any], add_options: bool) -> dict[str, Any]:
     """Convert a Notion property definition to OpenAI JSON Schema format.
@@ -174,7 +176,7 @@ def _generate_example_description(prop_config: dict[str, Any], prop_type: str) -
     return "e.g. " + ", ".join(example_names) + ", ..."
 
 
-def create_openai_schema_from_notion_database(notion_properties: dict[str, Any], add_options: bool) -> dict[str, Any]:
+def create_openai_schema_from_notion_database(notion_properties: dict[str, Any], add_options: bool) -> OpenAISchema:
     """Create a complete OpenAI JSON Schema from Notion database properties.
 
     This function converts Notion database properties into an OpenAI-compatible JSON schema
@@ -185,7 +187,7 @@ def create_openai_schema_from_notion_database(notion_properties: dict[str, Any],
         add_options: Whether to include enum options for select properties
 
     Returns:
-        Complete OpenAI JSON Schema for structured output
+        OpenAISchema instance representing the schema for structured output
 
     Special description directives:
         - #exclude: Property will be skipped entirely
@@ -232,7 +234,7 @@ def create_openai_schema_from_notion_database(notion_properties: dict[str, Any],
         schema["properties"][prop_name] = notion_property_to_openai_schema(prop_config, add_options=include_options)
         schema["required"].append(prop_name)
 
-    return schema
+    return OpenAISchema(**schema)
 
 
 def convert_openai_response_to_notion_update(

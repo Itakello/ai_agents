@@ -303,7 +303,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "salary": {"type": "number"},
             "is_remote": {"type": "checkbox"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         expected = {
             "type": "object",
@@ -328,7 +328,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "formula_field": {"type": "formula"},
             "rollup_field": {"type": "rollup"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Only job_title should be included
         expected = {
@@ -352,7 +352,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=True)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=True).dict()
 
         expected = {
             "type": "object",
@@ -369,7 +369,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "internal_notes": {"type": "rich_text", "description": "Internal notes #exclude"},
             "company": {"type": "rich_text"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         expected = {
             "type": "object",
@@ -398,7 +398,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             }
         }
         # Even with add_options=False, #keep-options should force inclusion
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         expected = {
             "type": "object",
@@ -431,7 +431,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Should generate example description
         assert "description" in result["properties"]["experience_level"]
@@ -455,7 +455,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Should combine original description with examples
         expected_desc = "Task priority level | e.g. Low, High, ..."
@@ -476,7 +476,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Should generate examples for multi_select
         assert "description" in result["properties"]["skills"]
@@ -498,7 +498,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Should generate examples for status
         assert "description" in result["properties"]["workflow_status"]
@@ -527,7 +527,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "created_time": {"type": "created_time"},
             "is_public": {"type": "checkbox"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Check what's included and excluded
         assert "title" in result["properties"]

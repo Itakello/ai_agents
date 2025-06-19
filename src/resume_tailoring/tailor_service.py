@@ -4,8 +4,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from src.common.llm_clients import OpenAIClient
-from src.common.notion_service import NotionService
+from src.common.services.notion_sync_service import NotionSyncService
+from src.common.services.openai_service import OpenAIService
 from src.core.config import get_settings
 from src.core.logger import logger
 
@@ -39,12 +39,14 @@ def apply_diff(src: str, diff: str) -> str:
 
 
 class TailorService:
-    def __init__(self, openai_client: OpenAIClient, latex_service: LatexService, notion_service: NotionService) -> None:
-        self.openai_client = openai_client
+    def __init__(
+        self, openai_service: OpenAIService, latex_service: LatexService, notion_service: NotionSyncService
+    ) -> None:
+        self.openai_service = openai_service
         self.latex_service = latex_service
         self.notion_service = notion_service
 
-    def tailor_resume(
+    async def tailor_resume(
         self,
         job_metadata: dict[str, Any],
         master_resume_tex_content: str,
@@ -94,7 +96,7 @@ class TailorService:
 
         for attempt in range(1, max_diff_retries + 1):
             # logger.info(f"Initial tailoring attempt {attempt}/{max_diff_retries}")
-            llm_response = self.openai_client.get_response(
+            llm_response = self.openai_service.get_response(
                 system_prompt, user_prompt, model_name=settings.DEFAULT_MODEL_NAME
             )
             try:
@@ -161,18 +163,19 @@ class TailorService:
             return  # Exit if no PDF was successfully generated
 
         # 7. Remove all files from the resume property before uploading new file
-        self.notion_service.update_page_property(
-            page_id=notion_page_id,
-            property_name=settings.TAILORED_RESUME_PROPERTY_NAME,
-            property_value={"files": []},
+
+        # Clear existing files in the designated property by updating the page with an empty file list.
+        await self.notion_service.update_page(
+            notion_page_id,
+            {settings.TAILORED_RESUME_PROPERTY_NAME: {"files": []}},
         )
 
         # 8. Reset resume property and upload tailored PDF to Notion
         if compiled_tailored_pdf_path and compiled_tailored_pdf_path.exists():
-            self.notion_service.upload_file_to_page_property(
-                file_path=compiled_tailored_pdf_path,
-                page_id=notion_page_id,
-                property_name=settings.TAILORED_RESUME_PROPERTY_NAME,
+            await self.notion_service.upload_file_to_page(
+                str(compiled_tailored_pdf_path),
+                notion_page_id,
+                settings.TAILORED_RESUME_PROPERTY_NAME,
             )
         else:
             # Log an error or handle if PDF compilation failed
@@ -194,10 +197,10 @@ class TailorService:
             compiled_diff_pdf_path = self.latex_service.compile_resume(diff_tex_result_path)
 
             if compiled_diff_pdf_path and compiled_diff_pdf_path.exists():
-                self.notion_service.upload_file_to_page_property(
-                    file_path=compiled_diff_pdf_path,
-                    page_id=notion_page_id,
-                    property_name=settings.TAILORED_RESUME_PROPERTY_NAME,
+                await self.notion_service.upload_file_to_page(
+                    str(compiled_diff_pdf_path),
+                    notion_page_id,
+                    settings.TAILORED_RESUME_PROPERTY_NAME,
                 )
             else:
                 # Log an error or handle if diff PDF compilation failed
@@ -244,7 +247,7 @@ class TailorService:
             )
 
             # We call get_response with only the user_prompt. The client will handle the history.
-            reduction_llm_response = self.openai_client.get_response(
+            reduction_llm_response = self.openai_service.get_response(
                 sys_prompt=None,  # System prompt is already in the history
                 user_prompt=reduction_user_prompt,
                 model_name=settings.DEFAULT_MODEL_NAME,

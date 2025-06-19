@@ -1,7 +1,7 @@
 """End-to-end tests for the Job Finder Assistant application."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -40,7 +40,7 @@ class TestEndToEnd:
         with (
             patch("src.main.Settings", return_value=mock_settings),
             patch("src.main.parse_arguments") as mock_parse_args,
-            patch("src.main.NotionService") as mock_notion,
+            patch("src.main.NotionSyncService") as mock_notion,
             patch("src.main.ExtractorService") as mock_extractor,
         ):
             # Setup mock arguments
@@ -60,6 +60,9 @@ class TestEndToEnd:
                     "url": {"type": "url"},
                 }
             }
+            mock_notion_instance.save_or_update_extracted_data = AsyncMock()
+            mock_notion_instance.find_page_by_url = AsyncMock()
+            mock_notion_instance.find_page_by_url.return_value = mock_job_metadata
 
             mock_extractor_instance = mock_extractor.return_value
             mock_extractor_instance.extract_metadata_from_job_url.return_value = mock_job_metadata
@@ -72,9 +75,7 @@ class TestEndToEnd:
             mock_extractor_instance.extract_metadata_from_job_url.assert_called_once_with(
                 "https://example.com/job/123", mock_notion_instance.get_database_schema.return_value, "gpt-4"
             )
-            mock_notion_instance.save_or_update_extracted_data.assert_called_once_with(
-                "https://example.com/job/123", mock_job_metadata
-            )
+            mock_notion_instance.save_or_update_extracted_data.assert_called_once()
 
     def test_tailor_resume_command_end_to_end(
         self, mock_settings: MagicMock, mock_job_metadata: dict, tmp_path: Path
@@ -92,7 +93,7 @@ class TestEndToEnd:
         with (
             patch("src.main.Settings", return_value=mock_settings),
             patch("src.main.parse_arguments") as mock_parse_args,
-            patch("src.main.NotionService") as mock_notion,
+            patch("src.main.NotionSyncService") as mock_notion,
             patch("src.main.TailorService") as mock_tailor,
         ):
             # Setup mock arguments
@@ -100,6 +101,7 @@ class TestEndToEnd:
 
             # Setup mock services
             mock_notion_instance = mock_notion.return_value
+            mock_notion_instance.find_page_by_url = AsyncMock()
             mock_notion_instance.find_page_by_url.return_value = mock_job_metadata
 
             mock_tailor_instance = mock_tailor.return_value

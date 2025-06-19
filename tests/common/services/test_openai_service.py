@@ -1,4 +1,4 @@
-"""Tests for the LLM clients module."""
+"""Tests for the OpenAI service module."""
 
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, patch
 import openai
 import pytest
 
-from src.common.llm_clients import OpenAIClient
+from src.common.services.openai_service import OpenAIService
 
 
-class TestOpenAIClient:
-    """Test suite for the OpenAIClient class."""
+class TestOpenAIService:
+    """Test suite for the OpenAIService class."""
 
     @pytest.fixture
     def mock_client(self) -> Generator[MagicMock]:
@@ -34,16 +34,16 @@ class TestOpenAIClient:
             yield mock_client
 
     def test_init_sets_up_client(self, mock_client: MagicMock) -> None:
-        """Test that the OpenAI client is initialized with the correct API key."""
+        """Test that the OpenAI service is initialized with the correct API key."""
         # Arrange
         api_key = "test-api-key"
 
         # Act
-        client = OpenAIClient(api_key=api_key, temperature=0.7)
+        service = OpenAIService(api_key=api_key, temperature=0.7)
 
         # Assert
         mock_client.assert_called_once_with(api_key=api_key)
-        assert client.response_id is None
+        assert service.response_id is None
 
     def test_get_response_calls_api_correctly(self, mock_client: MagicMock) -> None:
         """Test that get_chat_completion calls the Responses API correctly."""
@@ -56,8 +56,8 @@ class TestOpenAIClient:
         mock_responses = mock_client.return_value.responses
 
         # Act
-        client = OpenAIClient(api_key=api_key, temperature=0.7)
-        response = client.get_response(sys_prompt=None, user_prompt=prompt, model_name=model_name)
+        service = OpenAIService(api_key=api_key, temperature=0.7)
+        response = service.get_response(sys_prompt=None, user_prompt=prompt, model_name=model_name)
 
         # Assert
         mock_responses.create.assert_called_once()
@@ -69,20 +69,20 @@ class TestOpenAIClient:
 
         assert call_args["previous_response_id"] == openai.NOT_GIVEN
         assert response == "Test response"
-        assert client.response_id == "resp_test123"  # Should be set after first call
+        assert service.response_id == "resp_test123"  # Should be set after first call
 
     def test_get_response_raises_if_both_prompts_none(self, mock_client: MagicMock) -> None:
         """Test that get_response raises ValueError if both sys_prompt and user_prompt are None."""
-        client = OpenAIClient(api_key="test-api-key", temperature=0.7)
+        service = OpenAIService(api_key="test-api-key", temperature=0.7)
         with pytest.raises(ValueError, match="At least one of sys_prompt or user_prompt must be provided"):
-            client.get_response(sys_prompt=None, user_prompt=None, model_name="gpt-4")
+            service.get_response(sys_prompt=None, user_prompt=None, model_name="gpt-4")
 
     def test_get_structured_response_raises_if_both_prompts_none(self, mock_client: MagicMock) -> None:
         """Test that get_structured_response raises ValueError if both sys_prompt and user_prompt are None."""
-        client = OpenAIClient(api_key="test-api-key", temperature=0.7)
+        service = OpenAIService(api_key="test-api-key", temperature=0.7)
         schema = {"type": "object", "properties": {"foo": {"type": "string"}}, "required": ["foo"]}
         with pytest.raises(ValueError, match="At least one of sys_prompt or user_prompt must be provided"):
-            client.get_structured_response(sys_prompt=None, user_prompt=None, model_name="gpt-4", schema=schema)
+            service.get_structured_response(sys_prompt=None, user_prompt=None, model_name="gpt-4", schema=schema)
 
     def test_get_response_handles_empty_response(self, mock_client: MagicMock) -> None:
         """Test that get_response handles empty responses gracefully."""
@@ -96,8 +96,8 @@ class TestOpenAIClient:
         mock_client.return_value.responses.create.return_value = empty_response
 
         # Act
-        client = OpenAIClient(api_key=api_key, temperature=0.7)
-        response = client.get_response(sys_prompt=None, user_prompt=prompt, model_name="gpt-4o")
+        service = OpenAIService(api_key=api_key, temperature=0.7)
+        response = service.get_response(sys_prompt=None, user_prompt=prompt, model_name="gpt-4o")
 
         # Assert
         assert response == ""
@@ -109,9 +109,9 @@ class TestOpenAIClient:
         prompt = "Test prompt"
 
         # Act
-        client = OpenAIClient(api_key=api_key, temperature=0.7)
+        service = OpenAIService(api_key=api_key, temperature=0.7)
 
-        client.get_response(sys_prompt=None, user_prompt=prompt, model_name="gpt-4o")
+        service.get_response(sys_prompt=None, user_prompt=prompt, model_name="gpt-4o")
 
         # Assert
         call_args = mock_client.return_value.responses.create.call_args[1]
@@ -131,10 +131,10 @@ class TestOpenAIClient:
 
         mock_client.return_value.responses.create.return_value = error_response
 
-        client = OpenAIClient(api_key="test-api-key", temperature=0.7)
+        service = OpenAIService(api_key="test-api-key", temperature=0.7)
 
         with pytest.raises(ValueError) as exc_info:
-            client.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
+            service.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
 
         assert "API Error: Test error message (code: test_error_code)" in str(exc_info.value)
 
@@ -142,6 +142,6 @@ class TestOpenAIClient:
         mock_client.return_value.responses.create.side_effect = Exception("Connection error")
 
         with pytest.raises(ValueError) as exc_info:
-            client.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
+            service.get_response(sys_prompt=None, user_prompt="Test prompt", model_name="gpt-4o")
 
         assert "Error getting response: Connection error" in str(exc_info.value)

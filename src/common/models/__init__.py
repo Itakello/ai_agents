@@ -1,7 +1,7 @@
-"""Common package for shared functionality."""
+"""Models package for Notion data structures."""
 
-from .models.notion_database import NotionDatabase
-from .models.notion_page import (
+from .notion_database import NotionDatabase
+from .notion_page import (
     NotionCheckboxProperty,
     NotionDateProperty,
     NotionEmailProperty,
@@ -16,9 +16,6 @@ from .models.notion_page import (
     NotionTitleProperty,
     NotionUrlProperty,
 )
-from .services.notion_api_service import NotionAPIService
-from .services.notion_file_service import NotionFileService
-from .services.notion_sync_service import NotionSyncService
 
 __all__ = [
     "NotionDatabase",
@@ -35,7 +32,4 @@ __all__ = [
     "NotionSelectProperty",
     "NotionTitleProperty",
     "NotionUrlProperty",
-    "NotionAPIService",
-    "NotionFileService",
-    "NotionSyncService",
 ]

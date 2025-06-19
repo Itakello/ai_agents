@@ -1,7 +1,7 @@
 """
-LLM Clients module for interacting with various language model providers.
+OpenAI Service module for interacting with various language model providers.
 
-This module provides client implementations for different LLM providers, starting with OpenAI.
+This module provides service implementations for different LLM providers, starting with OpenAI.
 """
 
 import json
@@ -17,10 +17,10 @@ from openai.types.responses import (
 )
 
 
-class OpenAIClient:
-    """Client for interacting with OpenAI's Responses API.
+class OpenAIService:
+    """Service for interacting with OpenAI's Responses API.
 
-    This client provides a simple interface to interact with OpenAI's models
+    This service provides a simple interface to interact with OpenAI's models
     using the Responses API, which is a stateful API that combines chat completions
     and assistants API features.
 
@@ -29,7 +29,7 @@ class OpenAIClient:
     """
 
     def __init__(self, api_key: str, temperature: float = 0.7) -> None:
-        """Initialize the OpenAI client with the provided API key and temperature.
+        """Initialize the OpenAI service with the provided API key and temperature.
 
         Args:
             api_key: The OpenAI API key for authentication.

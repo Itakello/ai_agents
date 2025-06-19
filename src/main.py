@@ -1,15 +1,13 @@
 import argparse
+import asyncio
 import sys
 from typing import Any
 
-from src.common.llm_clients import OpenAIClient
-from src.common.notion_service import NotionService
+from src.common.services import NotionSyncService, OpenAIService
 from src.core.config import Settings
 from src.core.logger import logger
-from src.metadata_extraction.extractor_service import ExtractorService
-from src.resume_tailoring.latex_service import LatexService
-from src.resume_tailoring.pdf_compiler import PDFCompiler
-from src.resume_tailoring.tailor_service import TailorService
+from src.metadata_extraction import ExtractorService
+from src.resume_tailoring import LatexService, PDFCompiler, TailorService
 
 
 def parse_arguments(default_model: str) -> argparse.Namespace:
@@ -89,15 +87,15 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict
     """Handle the extract command to extract metadata from a job URL and save everything in Notion."""
     # Initialize services
     logger.info("Initializing services...")
-    openai_client = OpenAIClient(api_key=settings.OPENAI_API_KEY)
-    notion_service = NotionService(api_key=settings.NOTION_API_KEY, database_id=settings.NOTION_DATABASE_ID)
+    openai_service = OpenAIService(api_key=settings.OPENAI_API_KEY)
+    notion_service = NotionSyncService(database_id=settings.NOTION_DATABASE_ID)
     extractor_service = ExtractorService(
-        openai_client=openai_client,
+        openai_service=openai_service,
         notion_service=notion_service,
         add_properties_options=args.add_properties_options,
     )
 
-    # Fetch Notion DB schema
+    # Retrieve the Notion database schema (converted to raw dict) synchronously
     database_schema = notion_service.get_database_schema()
 
     # Extract metadata from job URL
@@ -113,9 +111,12 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict
 
     # Save to Notion
     try:
-        notion_service.save_or_update_extracted_data(
-            args.job_url,
-            extracted_metadata,
+        asyncio.run(
+            notion_service.save_or_update_extracted_data(
+                settings.NOTION_DATABASE_ID,
+                args.job_url,
+                extracted_metadata,
+            )
         )
         logger.success(f"Saved/updated job metadata for URL: {args.job_url}")
     except Exception as e:
@@ -124,26 +125,27 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict
     return extracted_metadata
 
 
-def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -> None:
+async def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -> None:
     """Handle the tailor-resume command to tailor resume for a specific job using Notion only."""
+
     # Initialize services for resume tailoring...
     logger.info("Initializing services for resume tailoring...")
-    openai_client = OpenAIClient(api_key=settings.OPENAI_API_KEY)
-    notion_service = NotionService(api_key=settings.NOTION_API_KEY, database_id=settings.NOTION_DATABASE_ID)
+    openai_service = OpenAIService(api_key=settings.OPENAI_API_KEY)
+    notion_service = NotionSyncService(database_id=settings.NOTION_DATABASE_ID)
     pdf_compiler = PDFCompiler()
     latex_service = LatexService(pdf_compiler=pdf_compiler, settings=settings)
     tailor_service = TailorService(
-        openai_client=openai_client,
+        openai_service=openai_service,
         latex_service=latex_service,
         notion_service=notion_service,
     )
 
     try:
-        # Fetch job metadata from Notion by job URL
-        job_metadata = notion_service.find_page_by_url(args.job_url)
+        job_page = await notion_service.find_page_by_url(args.job_url)
 
-        if not job_metadata:
-            job_metadata = handle_extract_command(args, settings)
+        if job_page is None:
+            logger.error("Failed to locate or create job metadata in Notion.")
+            sys.exit(1)
 
         # Read master resume content
         logger.info("Reading master resume content...")
@@ -157,11 +159,22 @@ def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -
 
         # Call tailor service
         logger.info("Tailoring resume...")
-        tailor_service.tailor_resume(
-            job_metadata=job_metadata,
+        if isinstance(job_page, dict):
+            job_metadata_dump = job_page  # Fixture / mock returning plain dict
+            page_id = job_page.get("id", "unknown")
+        else:
+            job_metadata_dump = job_page.model_dump()
+            page_id = job_page.id
+
+        # Call may be a coroutine or regular function (for easier mocking in tests)
+        result = tailor_service.tailor_resume(
+            job_metadata=job_metadata_dump,
             master_resume_tex_content=master_resume_tex_content,
-            notion_page_id=job_metadata["id"],
+            notion_page_id=page_id,
         )
+
+        if asyncio.iscoroutine(result):
+            await result
 
         logger.success("Resume tailoring completed successfully!")
 
@@ -186,7 +199,7 @@ def main() -> None:
             job_metadata = handle_extract_command(args, settings)
             display_results(job_metadata)
         elif args.command == "tailor-resume":
-            handle_tailor_resume_command(args, settings)
+            asyncio.run(handle_tailor_resume_command(args, settings))
         else:
             print("Error: No command specified. Use --help for usage information.")
             sys.exit(1)
