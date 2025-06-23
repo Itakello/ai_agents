@@ -37,10 +37,25 @@ class NotionSyncService:
         self.file_service = file_service or NotionFileService()
         self.database_id = database_id or settings.NOTION_DATABASE_ID
 
-        # Ensure database schema once during initialisation.  Because this is a
-        # synchronous context we have to drive the coroutine manually.
+        # Ensure database schema once during initialisation.  If we're already
+        # inside an active event-loop (e.g. when the caller uses
+        # ``asyncio.run`` higher up), we *schedule* the async task instead of
+        # calling ``asyncio.run`` which would raise *"cannot be called from a
+        # running event loop"*.
+
         if auto_ensure_schema:
-            self._ensure_required_properties_sync()
+            try:
+                running_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                running_loop = None
+
+            if running_loop is None:
+                # Safe to run a temporary loop.
+                self._ensure_required_properties_sync()
+            else:
+                # Fire-and-forget – caller can await ``_ensure_required_properties``
+                # themselves if they need to ensure completion.
+                running_loop.create_task(self._ensure_required_properties())
 
     _cached_database: NotionDatabase | None = None  # class-level cache per instance
 
@@ -246,8 +261,25 @@ class NotionSyncService:
 
                 return await self.update_page(page.id, notion_properties)
             else:
-                # Create new page
-                return await self.create_page(database_id, extracted_data)
+                # ----------------------------------------------------------
+                # Create a **new** page – convert the plain LLM output into
+                # the nested JSON structure required by the Notion API first.
+                # ----------------------------------------------------------
+
+                # Local import to avoid circular dependency during module
+                # initialisation (metadata_extraction→extractor_service→
+                # NotionSyncService).
+                from src.metadata_extraction.schema_utils import (
+                    build_notion_properties_from_llm_output,
+                )
+
+                db_schema = self.get_database_schema(database_id)
+                formatted_payload = build_notion_properties_from_llm_output(
+                    extracted_data,
+                    db_schema,
+                )
+
+                return await self.create_page(database_id, formatted_payload["properties"])
         except Exception as e:
             raise NotionAPIError(f"Failed to save or update extracted data: {str(e)}") from e
 
@@ -266,7 +298,26 @@ class NotionSyncService:
             return await self.get_database(db_id)
 
         db_id = database_id or self.database_id
-        self._cached_database = asyncio.run(_inner(db_id))
+
+        try:
+            running_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            running_loop = None
+
+        if running_loop is None:
+            # No active loop – safe to use asyncio.run
+            self._cached_database = asyncio.run(_inner(db_id))
+        else:
+            # Spawn a *temporary* loop so we don't interfere with the current
+            # one.  This mirrors the behaviour of ``asyncio.run`` but avoids
+            # the RuntimeError.
+            tmp_loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(tmp_loop)
+                self._cached_database = tmp_loop.run_until_complete(_inner(db_id))
+            finally:
+                tmp_loop.close()
+                asyncio.set_event_loop(running_loop)
 
         # NOTE: ``asyncio.run`` creates a *temporary* event-loop which is
         # automatically closed once the coroutine completes.  The

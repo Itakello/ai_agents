@@ -237,26 +237,50 @@ def create_openai_schema_from_notion_database(notion_properties: dict[str, Any],
     return OpenAISchema(**schema)
 
 
-def convert_openai_response_to_notion_update(
+def build_notion_properties_from_llm_output(
     openai_response: dict[str, Any], notion_properties: dict[str, Any]
 ) -> dict[str, Any]:
-    """Convert OpenAI response to Notion page update format.
+    """Convert a model's structured output into a Notion *properties* payload.
+
+    This helper takes the plain Python values produced by an LLM (strings,
+    numbers, lists, …) and wraps them in the nested JSON structure that the
+    Notion API expects for each property type.  It filters out values that are
+    either ``None`` or empty ("", []) so that we don't accidentally overwrite
+    existing content with blanks when performing updates.
 
     Args:
-        openai_response: Data returned from OpenAI structured output
-        notion_properties: Notion database property definitions
+        openai_response: The raw dict produced by the LLM – keys match the
+            Notion column names, values are primitive Python types.
+        notion_properties: The *database schema* – i.e. the property
+            definitions as returned by ``NotionClient.databases.retrieve``.
 
     Returns:
-        Dictionary ready for Notion page update API call, with 'properties' key.
+        A ``dict`` with a single key ``"properties"`` whose value is ready to
+        be passed directly to ``NotionClient.pages.create`` or
+        ``NotionClient.pages.update``.
     """
-    from .schema_utils import openai_data_to_notion_property
-
     properties: dict[str, Any] = {}
+
     for prop_name, value in openai_response.items():
-        if prop_name in notion_properties:
-            prop_type = notion_properties[prop_name].get("type")
-            notion_value = openai_data_to_notion_property(value, prop_type)
-            # Only include if the value is not None/empty
-            if notion_value:
-                properties[prop_name] = notion_value
+        if prop_name not in notion_properties:
+            # Skip keys that do not exist in the destination DB – this can
+            # happen if the LLM hallucinated a column or if the schema was
+            # modified between extraction and save.
+            continue
+
+        prop_type = notion_properties[prop_name].get("type")
+        notion_value = openai_data_to_notion_property(value, prop_type)
+
+        # Only include if the conversion produced a *non–empty* payload.
+        if notion_value:
+            properties[prop_name] = notion_value
+
     return {"properties": properties}
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatibility alias (tests & older code may still import the old
+# name).  Remove in a future major version.
+# ---------------------------------------------------------------------------
+
+convert_openai_response_to_notion_update = build_notion_properties_from_llm_output  # noqa: E305

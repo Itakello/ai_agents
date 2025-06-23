@@ -131,7 +131,25 @@ class ExtractorService:
                     raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
                 return str(result.markdown)
 
-        return asyncio.run(crawl_url_async(job_url))
+        # If we're already inside an event-loop (e.g. called from an async
+        # CLI command) ``asyncio.run`` would raise.  Detect this case and use
+        # a dedicated temporary loop instead.
+
+        try:
+            running_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            running_loop = None
+
+        if running_loop is None:
+            return asyncio.run(crawl_url_async(job_url))
+
+        tmp_loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(tmp_loop)
+            return tmp_loop.run_until_complete(crawl_url_async(job_url))
+        finally:
+            tmp_loop.close()
+            asyncio.set_event_loop(running_loop)
 
     def _prepare_extraction_prompt(self, markdown_content: str) -> str:
         """

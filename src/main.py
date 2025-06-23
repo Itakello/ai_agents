@@ -83,24 +83,49 @@ def display_results(extracted_metadata: dict[str, Any]) -> None:
         print(f"{key}: {value_str}")
 
 
-def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict[str, Any]:
-    """Handle the extract command to extract metadata from a job URL and save everything in Notion."""
-    # Initialize services
+async def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict[str, Any]:
+    """Handle the extract command: pull metadata from a job URL and persist it in Notion (fully async)."""
+
+    # ------------------------------------------------------------------
+    # 1. Initialise services
+    # ------------------------------------------------------------------
     logger.info("Initializing services...")
+
     openai_service = OpenAIService(api_key=settings.OPENAI_API_KEY)
+
     notion_service = NotionSyncService(database_id=settings.NOTION_DATABASE_ID)
+
+    # The synchronous schema check performed during initialisation closes
+    # its temporary event-loop, leaving the internal client orphaned.  Create
+    # a *fresh* API service bound to the current asynchronous loop.
+    from src.common.services.notion_api_service import NotionAPIService  # local import to avoid cycle
+
+    notion_service.api_service = NotionAPIService()
+
     extractor_service = ExtractorService(
         openai_service=openai_service,
         notion_service=notion_service,
         add_properties_options=args.add_properties_options,
     )
 
-    # Retrieve the Notion database schema (converted to raw dict) synchronously
+    # ------------------------------------------------------------------
+    # 2. Ensure the DB schema and fetch a fresh copy for the extractor
+    # ------------------------------------------------------------------
+    maybe_coro = notion_service._ensure_required_properties()
+    if asyncio.iscoroutine(maybe_coro):
+        await maybe_coro
     database_schema = notion_service.get_database_schema()
 
-    # Extract metadata from job URL
+    # ------------------------------------------------------------------
+    # 3. Extract metadata using the (potentially blocking) extractor – keep
+    #    this call sync since it may use OpenAI in a blocking fashion.
+    # ------------------------------------------------------------------
     try:
-        extracted_metadata = extractor_service.extract_metadata_from_job_url(
+        # Run the (blocking) extraction inside a worker thread so that we
+        # do not attempt to start a new event-loop while the current one
+        # is already running.
+        extracted_metadata = await asyncio.to_thread(
+            extractor_service.extract_metadata_from_job_url,
             args.job_url,
             database_schema,
             args.model,
@@ -109,14 +134,14 @@ def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict
         logger.error(f"Extraction failed: {str(e)}")
         sys.exit(1)
 
-    # Save to Notion
+    # ------------------------------------------------------------------
+    # 4. Persist results back to Notion
+    # ------------------------------------------------------------------
     try:
-        asyncio.run(
-            notion_service.save_or_update_extracted_data(
-                settings.NOTION_DATABASE_ID,
-                args.job_url,
-                extracted_metadata,
-            )
+        await notion_service.save_or_update_extracted_data(
+            settings.NOTION_DATABASE_ID,
+            args.job_url,
+            extracted_metadata,
         )
         logger.success(f"Saved/updated job metadata for URL: {args.job_url}")
     except Exception as e:
@@ -196,7 +221,7 @@ def main() -> None:
 
         # Handle different commands
         if args.command == "extract":
-            job_metadata = handle_extract_command(args, settings)
+            job_metadata = asyncio.run(handle_extract_command(args, settings))
             display_results(job_metadata)
         elif args.command == "tailor-resume":
             asyncio.run(handle_tailor_resume_command(args, settings))
