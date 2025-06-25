@@ -279,6 +279,13 @@ class NotionSyncService:
                     db_schema,
                 )
 
+                # ------------------------------------------------------
+                # Add the *Job URL* manually – it is purposely excluded
+                # from the LLM schema (#exclude directive) but **must** be
+                # present in every page so we can look it up later.
+                # ------------------------------------------------------
+                formatted_payload["properties"][url_property] = {"url": url}
+
                 return await self.create_page(database_id, formatted_payload["properties"])
         except Exception as e:
             raise NotionAPIError(f"Failed to save or update extracted data: {str(e)}") from e
@@ -354,63 +361,91 @@ class NotionSyncService:
         database = self._cached_database
 
         # ------------------------------------------------------------------
-        # 2. Work out which required properties are missing
+        # 2. Determine which updates are required
         # ------------------------------------------------------------------
         required_property_defs: dict[str, dict[str, Any]] = settings.REQUIRED_DATABASE_PROPERTIES
-        required_property_types = {name: cfg["type"] for name, cfg in required_property_defs.items()}
 
-        missing = database.verify_schema(required_property_types)
-
-        # Special-case: if the *Title* property is considered missing but
-        # another property of type "title" already exists, we'll **rename** it
-        # instead of creating a second title column (which Notion forbids).
-
-        if "Title" in missing:
-            # Find the first property whose type is "title"
-            for old_name, prop in database.properties.items():
-                if prop.type == "title":
-                    # Build rename payload – keep the same type but change the
-                    # display name to "Title".
-                    rename_payload: dict[str, Any] = {old_name: {"name": "Title"}}
-                    # Preserve / set description if provided in config.
-                    title_desc = required_property_defs.get("Title", {}).get("description")
-                    if title_desc:
-                        rename_payload[old_name]["description"] = title_desc
-                    try:
-                        self._cached_database = await self.api_service.update_database(db_id, rename_payload)
-                    except Exception:  # pragma: no cover
-                        raise
-
-                    # Refresh local reference and recompute missing set
-                    database = self._cached_database
-                    missing = database.verify_schema(required_property_types)
-                    break
-
-        # After the rename attempt, remove any properties now satisfied.
-        if not missing:
-            return
-
-        # ------------------------------------------------------------------
-        # 3. Build payload for any *remaining* missing properties
-        # ------------------------------------------------------------------
+        # Payload that will be sent to Notion's *Update a database* endpoint.
         update_payload: dict[str, Any] = {}
-        for prop_name in missing:
-            # Skip title property if we've already renamed it
-            if prop_name == "Title":
+
+        for req_name, req_cfg in required_property_defs.items():
+            req_type: str = req_cfg["type"]  # e.g. "title", "url", …
+            req_desc: str | None = req_cfg.get("description")
+
+            existing_prop = database.properties.get(req_name)
+
+            # --------------------------------------------------------------
+            # Case 1 – Property with the *desired name* already exists.
+            #          We just need to ensure its *type* and *description*
+            #          match our requirements.
+            # --------------------------------------------------------------
+            if existing_prop is not None:
+                needs_update = False
+                prop_update: dict[str, Any] = {}
+
+                # 1a. Type mismatch ⟹ try to convert the property type.
+                if str(existing_prop.type) != req_type:
+                    prop_update[req_type] = {}
+                    needs_update = True
+
+                # 1b. Description mismatch ⟹ update the description text.
+                if req_desc is not None and existing_prop.description != req_desc:
+                    prop_update["description"] = req_desc
+                    needs_update = True
+
+                if needs_update:
+                    update_payload[req_name] = prop_update
+
+                # Nothing further to do for this property.
                 continue
-            prop_type = required_property_types[prop_name]
-            prop_desc = required_property_defs[prop_name].get("description")
 
-            new_prop_obj: dict[str, Any] = {prop_type: {}}
-            if prop_desc:
-                new_prop_obj["description"] = prop_desc
+            # --------------------------------------------------------------
+            # Case 2 – Property is *missing* entirely.
+            #          • For a *title* property we **rename** the existing
+            #            title column (if any).
+            #          • Otherwise we create a new property.
+            # --------------------------------------------------------------
+            if req_type == "title":
+                # Look for any existing property whose *type* is "title".
+                old_title_entry = next(
+                    ((old_name, prop) for old_name, prop in database.properties.items() if prop.type == "title"),
+                    None,
+                )
 
-            update_payload[prop_name] = new_prop_obj
+                # If a column with the *desired name* already exists but is **not**
+                # of type "title" we prefer **converting** that column instead of
+                # renaming the existing title one – this avoids the (invalid)
+                # scenario where we would end up with two properties sharing the
+                # same name.
+                desired_prop = database.properties.get(req_name)
 
+                if desired_prop is not None and desired_prop.type != "title":
+                    # Promote the existing column to be the title property.
+                    convert_def: dict[str, Any] = {desired_prop.id: {"name": req_name}}
+                    if req_desc is not None:
+                        convert_def[desired_prop.id]["description"] = req_desc
+                    update_payload.update(convert_def)
+                    continue
+
+                if old_title_entry is not None:
+                    old_name, old_prop = old_title_entry
+                    rename_def: dict[str, Any] = {"name": req_name}
+                    # Notion disallows *description* on the primary title
+                    # property – including it triggers a *"Cannot change
+                    # title to a different property type"* validation error.
+                    update_payload[old_prop.id] = rename_def
+                    continue
+
+            # 2b. Create a brand-new property with the required settings.
+            new_prop_def: dict[str, Any] = {req_type: {}}
+            if req_desc is not None:
+                new_prop_def["description"] = req_desc
+            update_payload[req_name] = new_prop_def
+
+        # ------------------------------------------------------------------
+        # 3. Apply updates (if any) and refresh local cache
+        # ------------------------------------------------------------------
         if update_payload:
-            # ------------------------------------------------------------------
-            # 4. Send update request and refresh cache
-            # ------------------------------------------------------------------
             try:
                 self._cached_database = await self.api_service.update_database(db_id, update_payload)
             except Exception:  # pragma: no cover
