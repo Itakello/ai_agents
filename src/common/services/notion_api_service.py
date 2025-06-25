@@ -1,5 +1,6 @@
 """Notion API service for handling raw API communication."""
 
+import asyncio
 from typing import Any
 
 from notion_client import AsyncClient as NotionClient
@@ -79,23 +80,44 @@ class NotionAPIService:
             raise NotionAPIError(f"Failed to update page {page_id}: {str(e)}") from e
 
     async def update_database(self, database_id: str, properties: dict[str, Any]) -> NotionDatabase:
-        """Update a database's properties.
+        """Update a database's properties with basic retry / back-off handling.
 
-        Args:
-            database_id: The ID of the database to update.
-            properties: The properties to update.
+        The Notion API occasionally returns a *409 Conflict* or the misleading
+        *"Cannot change title to a different property type"* validation error
+        while merely renaming the title column.  Both conditions are
+        transient – retrying after a short delay almost always succeeds.
 
-        Returns:
-            The updated database data.
-
-        Raises:
-            NotionAPIError: If there's an error updating the database.
+        This helper retries up to **3** times with exponential back-off for
+        those *specific* cases before surfacing the error to the caller.
         """
-        try:
-            result = await self.client.databases.update(database_id=database_id, properties=properties)
-            return NotionDatabase.model_validate(result)
-        except Exception as e:
-            raise NotionAPIError(f"Failed to update database {database_id}: {str(e)}") from e
+
+        max_attempts = 3
+        backoff_seconds = 0.8
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                result = await self.client.databases.update(database_id=database_id, properties=properties)
+                return NotionDatabase.model_validate(result)
+            except Exception as e:  # noqa: BLE001 – we inspect the message
+                # Convert to plain string once for re-use.
+                msg = str(e)
+
+                # -----------------------------------------------------------------
+                # Retry conditions
+                # -----------------------------------------------------------------
+                should_retry = (
+                    "Conflict occurred while saving" in msg or "Cannot change title to a different property type" in msg
+                )
+
+                if should_retry and attempt < max_attempts:
+                    await asyncio.sleep(backoff_seconds * (2 ** (attempt - 1)))
+                    continue
+
+                # No more retries or non-retryable error – raise
+                raise NotionAPIError(f"Failed to update database {database_id}: {msg}") from e
+
+        # Should never reach here – added to satisfy type checkers.
+        raise NotionAPIError(f"Failed to update database {database_id}: unknown error")
 
     async def create_page(self, parent: dict[str, Any], properties: dict[str, Any]) -> NotionPage:
         """Create a new page.

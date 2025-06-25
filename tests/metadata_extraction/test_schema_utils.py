@@ -198,11 +198,11 @@ class TestOpenAIDataToNotionProperty:
 
     def test_rich_text_conversion(self) -> None:
         result = openai_data_to_notion_property("Hello World", "rich_text")
-        assert result == {"rich_text": [{"text": {"content": "Hello World"}}]}
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Hello World"}}]}
 
     def test_title_conversion(self) -> None:
         result = openai_data_to_notion_property("Job Title", "title")
-        assert result == {"rich_text": [{"text": {"content": "Job Title"}}]}
+        assert result == {"title": [{"type": "text", "text": {"content": "Job Title"}}]}
 
     def test_number_conversion(self) -> None:
         result = openai_data_to_notion_property(42, "number")
@@ -571,7 +571,7 @@ class TestConvertOpenAIResponseToNotionUpdate:
 
         expected = {
             "properties": {
-                "job_title": {"rich_text": [{"text": {"content": "Software Engineer"}}]},
+                "job_title": {"title": [{"type": "text", "text": {"content": "Software Engineer"}}]},
                 "salary": {"number": 75000.0},
                 "is_remote": {"checkbox": True},
             }
@@ -588,9 +588,7 @@ class TestConvertOpenAIResponseToNotionUpdate:
         result = convert_openai_response_to_notion_update(openai_response, notion_properties)
 
         expected = {
-            "properties": {
-                "job_title": {"rich_text": [{"text": {"content": "Software Engineer"}}]},
-            }
+            "properties": {"job_title": {"title": [{"type": "text", "text": {"content": "Software Engineer"}}]}}
         }
         assert result == expected
 
@@ -607,9 +605,7 @@ class TestConvertOpenAIResponseToNotionUpdate:
         result = convert_openai_response_to_notion_update(openai_response, notion_properties)
 
         expected = {
-            "properties": {
-                "job_title": {"rich_text": [{"text": {"content": "Software Engineer"}}]},
-            }
+            "properties": {"job_title": {"title": [{"type": "text", "text": {"content": "Software Engineer"}}]}}
         }
         assert result == expected
 

@@ -79,8 +79,10 @@ def openai_data_to_notion_property(value: Any, property_type: str) -> dict[str, 
         return {}
 
     match property_type:
-        case "rich_text" | "title":
-            return {"rich_text": [{"text": {"content": str(value)}}]}
+        case "title":
+            return {"title": [{"type": "text", "text": {"content": str(value)}}]}
+        case "rich_text":
+            return {"rich_text": [{"type": "text", "text": {"content": str(value)}}]}
         case "number":
             return {"number": float(value) if value is not None else None}
         case "checkbox":

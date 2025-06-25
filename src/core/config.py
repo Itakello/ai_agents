@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     # Required database schema configuration
     REQUIRED_DATABASE_PROPERTIES: dict[str, dict[str, Any]] = {
-        "Title": {
+        "Job Title": {
             "type": "title",
             "description": "Job title",
         },
