@@ -1,0 +1,202 @@
+\documentclass[letterpaper,10pt]{article}
+
+\usepackage[dvipsnames]{xcolor}
+\usepackage{lmodern}
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+\setlength{\footskip}{4.08003pt}
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.75in}
+\addtolength{\evensidemargin}{-0.75in}
+\addtolength{\textwidth}{1.5in}
+\addtolength{\topmargin}{-0.75in}
+\addtolength{\textheight}{1.5in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItemresumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+\newcommand{\introduction}[1]{\item \small #1}
+\newcommand{\techSkillsItem}[2]{\item \small \textbf{#1}{: {#2}}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+\begin{center}
+    \textbf{\LARGE \scshape Mario Rossi} \\
+    {\normalsize\textit{| Software Engineer |}} \\ \vspace{1pt}
+    \small +39 123 456 7890 $|$ \href{mailto:mario.rossi@example.com}{\underline{mario.rossi@example.com}} $|$
+    \href{https://www.linkedin.com/in/mariorossi}{\underline{linkedin.com/in/mariorossi}} $|$
+    \href{https://github.com/mariorossi}{\underline{github.com/mariorossi}}
+\end{center}
+
+\begin{itemize}[leftmargin=0.15in, label={}]
+    \introduction{
+      Passionate software engineer with 5+ years of experience designing, developing, and deploying scalable web applications. Adept at collaborating with cross-functional teams to deliver high-quality, user-centric solutions. Skilled in full-stack development, cloud services, and Agile methodologies. Seeking opportunities to leverage technical expertise and leadership skills to create impactful products.
+    }
+\end{itemize}
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {University of Bologna}{Bologna, Italy}
+      {MSc, Computer Engineering}{Sep. 2017 -- Mar. 2020}
+    \resumeSubheading
+      {University of Bologna}{Bologna, Italy}
+      {BSc, Computer Science}{Sep. 2014 -- Jul. 2017}
+  \resumeSubHeadingListEnd
+
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {Senior Software Engineer}{Jun. 2022 -- Present}
+      {Tech Solutions S.p.A.}{Milan, Italy}
+      \resumeItemListStart
+        \resumeItem{Lead a team of 4 engineers in building a microservices-based e-commerce platform serving over 500k monthly users.}
+        \resumeItem{Designed and implemented RESTful APIs using FastAPI and PostgreSQL, achieving a 40\% reduction in page load times.}
+        \resumeItem{Migrated on-premise infrastructure to AWS, utilizing Docker and Kubernetes, improving deployment frequency by 3x.}
+        \resumeItem{Collaborated with product owners and UX designers to define technical requirements and ensure seamless user experience.}
+      \resumeItemListEnd
+
+    \resumeSubheading
+      {Software Engineer}{Apr. 2020 -- May 2022}
+      {Innovatech}{Bologna, Italy}
+      \resumeItemListStart
+        \resumeItem{Developed end-to-end features for a SaaS analytics platform using React, Node.js, and MongoDB.}
+        \resumeItem{Implemented CI/CD pipelines with GitHub Actions, reducing release cycle time by 25\%.}
+        \resumeItem{Introduced automated testing (PyTest, Jest) increasing code coverage from 60\% to 85\%.}
+      \resumeItemListEnd
+
+    \resumeSubheading
+      {Software Engineering Intern}{Mar. 2019 -- Aug. 2019}
+      {FutureTech Labs}{Bologna, Italy}
+      \resumeItemListStart
+        \resumeItem{Assisted in developing a machine learning module for predictive maintenance, leading to a 15\% decrease in system downtime.}
+        \resumeItem{Built data preprocessing pipelines in Python, ensuring data quality and consistency for model training.}
+      \resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+      \resumeProjectHeading
+          {\textbf{TaskMaster} $|$ \emph{React, Node.js, Express, MongoDB}}{2021}
+          \resumeItemListStart
+            \resumeItem{Created a task management web application enabling real-time collaboration and productivity tracking for teams.}
+            \resumeItem{Integrated WebSocket communication for live updates without page refreshes.}
+          \resumeItemListEnd
+
+      \resumeProjectHeading
+          {\textbf{WeatherEye} $|$ \emph{Python, Flask, OpenWeather API}}{2020}
+          \resumeItemListStart
+            \resumeItem{Developed a lightweight weather forecasting app providing location-based insights with dynamic visualizations.}
+            \resumeItem{Packaged application as a Docker container for seamless deployment across environments.}
+          \resumeItemListEnd
+
+      \resumeProjectHeading
+          {\textbf{BoostLib} $|$ \emph{TypeScript, NPM}}{2019}
+          \resumeItemListStart
+            \resumeItem{Published an open-source utility library on NPM, accumulating 1k+ weekly downloads.}
+            \resumeItem{Implemented modular functions for data manipulation and functional programming patterns.}
+          \resumeItemListEnd
+    \resumeSubHeadingListEnd
+%-----------PROGRAMMING SKILLS-----------
+\section{Technical Skills}
+\begin{itemize}[leftmargin=0.15in, label={}, nosep]
+  \techSkillsItem{Languages}{JavaScript/TypeScript, Python, Go, SQL, Bash}
+  \techSkillsItem{Frameworks}{React, FastAPI, Flask, Express, Django}
+  \techSkillsItem{Libraries}{NumPy, Pandas, Redux, Jest, Sequelize, Docker, Kubernetes}
+  \techSkillsItem{Cloud}{AWS (EC2, S3, RDS), Azure DevOps}
+  \techSkillsItem{Developer Tools}{Git, GitHub Actions, Jira, VS Code, Postman}
+  \techSkillsItem{Soft Skills}{Problem Solving, Team Leadership, Agile Methodologies, Effective Communication}
+\end{itemize}
+
+
+\end{document}
