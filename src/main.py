@@ -122,7 +122,9 @@ async def handle_extract_command(args: argparse.Namespace, settings: Settings) -
     # The synchronous schema check performed during initialisation closes
     # its temporary event-loop, leaving the internal client orphaned.  Create
     # a *fresh* API service bound to the current asynchronous loop.
-    from src.common.services.notion_api_service import NotionAPIService  # local import to avoid cycle
+    from src.common.services.notion_api_service import (
+        NotionAPIService,  # local import to avoid cycle
+    )
 
     notion_service.api_service = NotionAPIService()
 
