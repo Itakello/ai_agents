@@ -45,7 +45,11 @@ class TestEndToEnd:
         ):
             # Setup mock arguments
             mock_parse_args.return_value = MagicMock(
-                command="extract", job_url="https://example.com/job/123", model="gpt-4", add_properties_options=False
+                agent="resume",
+                command="extract",
+                job_url="https://example.com/job/123",
+                model="gpt-4",
+                add_properties_options=False,
             )
 
             # Setup mock services
@@ -63,6 +67,7 @@ class TestEndToEnd:
             mock_notion_instance.save_or_update_extracted_data = AsyncMock()
             mock_notion_instance.find_page_by_url = AsyncMock()
             mock_notion_instance.find_page_by_url.return_value = mock_job_metadata
+            mock_notion_instance.is_database_verified = AsyncMock(return_value=True)
 
             mock_extractor_instance = mock_extractor.return_value
             mock_extractor_instance.extract_metadata_from_job_url.return_value = mock_job_metadata
@@ -80,7 +85,7 @@ class TestEndToEnd:
     def test_tailor_resume_command_end_to_end(
         self, mock_settings: MagicMock, mock_job_metadata: dict, tmp_path: Path
     ) -> None:
-        """Test the complete tailor-resume command workflow."""
+        """Test the complete `resume tailor` command workflow."""
         # Create a test master resume file
         master_resume = tmp_path / "master_resume.tex"
         master_resume.write_text(r"""
@@ -97,12 +102,15 @@ class TestEndToEnd:
             patch("src.main.TailorService") as mock_tailor,
         ):
             # Setup mock arguments
-            mock_parse_args.return_value = MagicMock(command="tailor-resume", job_url="https://example.com/job/123")
+            mock_parse_args.return_value = MagicMock(
+                agent="resume", command="tailor", job_url="https://example.com/job/123"
+            )
 
             # Setup mock services
             mock_notion_instance = mock_notion.return_value
             mock_notion_instance.find_page_by_url = AsyncMock()
             mock_notion_instance.find_page_by_url.return_value = mock_job_metadata
+            mock_notion_instance.is_database_verified = AsyncMock(return_value=True)
 
             mock_tailor_instance = mock_tailor.return_value
 

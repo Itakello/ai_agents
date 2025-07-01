@@ -17,25 +17,27 @@ DUMMY_SETTINGS = dict(
 class TestParseArguments:
     """Test the parse_arguments function."""
 
-    @patch("sys.argv", ["main.py", "extract", "https://example.com/job"])
+    @patch("sys.argv", ["main.py", "resume", "extract", "https://example.com/job"])
     def test_parse_arguments_with_defaults(self) -> None:
         """Test parsing arguments with default model."""
         args = parse_arguments(default_model="gpt-4-test")
+        assert args.agent == "resume"
         assert args.command == "extract"
         assert args.job_url == "https://example.com/job"
         assert args.model == "gpt-4-test"
 
-    @patch("sys.argv", ["main.py", "extract", "https://example.com/job", "--model", "gpt-3.5-turbo"])
+    @patch("sys.argv", ["main.py", "resume", "extract", "https://example.com/job", "--model", "gpt-3.5-turbo"])
     def test_parse_arguments_with_custom_model(self) -> None:
         """Test parsing arguments with custom model."""
         args = parse_arguments(default_model="gpt-4-test")
+        assert args.agent == "resume"
         assert args.command == "extract"
         assert args.job_url == "https://example.com/job"
         assert args.model == "gpt-3.5-turbo"
 
     # The CLI does not support --method, so this test is removed.
 
-    @patch("sys.argv", ["main.py"])
+    @patch("sys.argv", ["main.py", "resume"])
     def test_parse_arguments_missing_url(self) -> None:
         """Test parsing arguments when no command is specified."""
         with pytest.raises(SystemExit):
@@ -63,6 +65,7 @@ class TestMain:
         """Test successful execution of the main function."""
         # Setup argument mock
         mock_args = MagicMock()
+        mock_args.agent = "resume"
         mock_args.command = "extract"
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
@@ -80,6 +83,8 @@ class TestMain:
 
         mock_notion_service_instance = MagicMock()
         mock_notion_service_instance.save_or_update_extracted_data = AsyncMock()
+        mock_notion_service_instance.is_database_verified = AsyncMock(return_value=True)
+
         mock_database_schema = {
             "job_title": {"type": "title"},
             "company": {"type": "rich_text"},
@@ -136,6 +141,8 @@ class TestMain:
     ) -> None:
         """Test main function handles settings initialization errors."""
         mock_args = MagicMock()
+        mock_args.agent = "resume"
+        mock_args.command = "extract"
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
         mock_args.method = "openai_web_search"
@@ -160,6 +167,8 @@ class TestMain:
         """Test main function handles Notion service errors."""
         # Setup argument mock
         mock_args = MagicMock()
+        mock_args.agent = "resume"
+        mock_args.command = "extract"
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
         mock_args.method = "openai_web_search"
@@ -174,6 +183,7 @@ class TestMain:
         mock_settings.return_value = mock_settings_instance
 
         mock_notion_service_instance = MagicMock()
+        mock_notion_service_instance.is_database_verified = AsyncMock(return_value=True)
         mock_notion_service_instance.get_database_schema.side_effect = Exception("Notion API error")
         mock_notion_service.return_value = mock_notion_service_instance
 
@@ -197,6 +207,8 @@ class TestMain:
         """Test main function handles extraction service errors."""
         # Setup argument mock
         mock_args = MagicMock()
+        mock_args.agent = "resume"
+        mock_args.command = "extract"
         mock_args.job_url = "https://example.com/job"
         mock_args.model = "gpt-4o"
         mock_args.method = "openai_web_search"
@@ -211,6 +223,7 @@ class TestMain:
         mock_settings.return_value = mock_settings_instance
 
         mock_notion_service_instance = MagicMock()
+        mock_notion_service_instance.is_database_verified = AsyncMock(return_value=True)
         mock_notion_service_instance.get_database_schema.side_effect = Exception("Extraction error")
         mock_notion_service.return_value = mock_notion_service_instance
 

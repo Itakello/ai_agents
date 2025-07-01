@@ -19,8 +19,6 @@ class NotionSyncService:
         api_service: NotionAPIService | None = None,
         file_service: NotionFileService | None = None,
         database_id: str | None = None,
-        *,
-        auto_ensure_schema: bool = True,
     ) -> None:
         """Initialize the Notion sync service.
 
@@ -28,34 +26,15 @@ class NotionSyncService:
             api_service: Optional Notion API service. If not provided, a new one is created.
             file_service: Optional Notion file service. If not provided, a new one is created.
             database_id: Optional Notion database ID. If not provided, uses the value from settings.
-            auto_ensure_schema: When ``True`` (default) the service verifies and
-                patches the database schema immediately.  Disable for special
-                scenarios (e.g. offline tests) where no API calls should be made.
         """
         settings = get_settings()
         self.api_service = api_service or NotionAPIService()
         self.file_service = file_service or NotionFileService()
         self.database_id = database_id or settings.NOTION_DATABASE_ID
 
-        # Ensure database schema once during initialisation.  If we're already
-        # inside an active event-loop (e.g. when the caller uses
-        # ``asyncio.run`` higher up), we *schedule* the async task instead of
-        # calling ``asyncio.run`` which would raise *"cannot be called from a
-        # running event loop"*.
-
-        if auto_ensure_schema:
-            try:
-                running_loop = asyncio.get_running_loop()
-            except RuntimeError:
-                running_loop = None
-
-            if running_loop is None:
-                # Safe to run a temporary loop.
-                self._ensure_required_properties_sync()
-            else:
-                # Fire-and-forget – caller can await ``_ensure_required_properties``
-                # themselves if they need to ensure completion.
-                running_loop.create_task(self._ensure_required_properties())
+        # The service no longer performs automatic schema validation/patching –
+        # call ``_ensure_required_properties`` explicitly via the *init* CLI
+        # command when you need to create or repair the database schema.
 
     _cached_database: NotionDatabase | None = None  # class-level cache per instance
 
@@ -174,8 +153,9 @@ class NotionSyncService:
             NotionAPIError: If there's an error searching for the page.
         """
         try:
-            # Ensure the database contains the URL property before querying.
-            await self._ensure_required_properties()
+            # Verify the schema – if missing properties we instruct the caller to run `init`.
+            if not await self.is_database_verified():
+                raise NotionAPIError("Database schema is missing required properties. Run the `init` command first.")
 
             settings = get_settings()
             url_property = url_property_name or settings.JOB_URL_PROPERTY_NAME
@@ -214,10 +194,10 @@ class NotionSyncService:
             # re-trying the query.
             error_msg = str(e)
             if "Could not find property" in error_msg:
-                # Best-effort schema fix – if this still fails we'll bubble up
-                # the original error for the caller to handle.
-                await self._ensure_required_properties(database_id)
-                return await self.api_service.query_database(database_id, filter)
+                # Inform the caller instead of auto-patching.
+                raise NotionAPIError(
+                    "Database schema is missing required properties. Run the `init` command first."
+                ) from e
 
             raise NotionAPIError(f"Failed to query database: {error_msg}") from e
 
@@ -238,10 +218,9 @@ class NotionSyncService:
             NotionAPIError: If there's an error saving or updating the data.
         """
         try:
-            # Make sure all required properties (particularly the URL one) are
-            # present in the database before we attempt any operations that
-            # rely on them.
-            await self._ensure_required_properties(database_id)
+            # Ensure database is in the expected shape – no auto-fix here.
+            if not await self.is_database_verified(database_id):
+                raise NotionAPIError("Database schema is missing required properties. Run the `init` command first.")
 
             # Find existing page by URL
             url_property = get_settings().JOB_URL_PROPERTY_NAME
@@ -465,3 +444,39 @@ class NotionSyncService:
             await self._ensure_required_properties()
 
         asyncio.run(_inner())
+
+    async def is_database_verified(self, database_id: str | None = None) -> bool:
+        """Return *True* if the database already contains all required properties.
+
+        The check is purely *read-only* – it will *not* attempt to run any
+        update operation against the Notion API.  The caller can use this to
+        decide whether they need to run the ``init`` command (which *does*
+        patch the schema) before executing higher-level actions such as
+        *resume extract* or *resume tailor*.
+        """
+
+        db_id = database_id or self.database_id
+
+        # Ensure we have a cached copy of the database definition.
+        if self._cached_database is None or self._cached_database.id != db_id:
+            self._cached_database = await self.get_database(db_id)
+
+        database = self._cached_database
+        required_property_defs: dict[str, dict[str, Any]] = get_settings().REQUIRED_DATABASE_PROPERTIES
+
+        for req_name, req_cfg in required_property_defs.items():
+            req_type: str = req_cfg["type"]
+            req_desc: str | None = req_cfg.get("description")
+
+            existing_prop = database.properties.get(req_name)
+            if existing_prop is None:
+                return False
+
+            # Property exists – ensure its *type* and (if provided) description match.
+            if str(existing_prop.type) != req_type:
+                return False
+            if req_desc is not None and existing_prop.description != req_desc:
+                return False
+
+        # All requirements satisfied.
+        return True

@@ -20,22 +20,22 @@ def parse_arguments(default_model: str) -> argparse.Namespace:
         Parsed command line arguments
     """
     parser = argparse.ArgumentParser(
-        description="Job Finder Assistant - Extract metadata from job postings and store all data in Notion",
+        description="AI Agents for Notion – A multi-agent toolkit (currently ships with the Resume Tailoring agent)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""Examples:
-  # Extract metadata from a job URL
-  python src/main.py extract https://example.com/job-posting
-  python src/main.py extract https://linkedin.com/jobs/view/123456 --model gpt-4o-mini
-
-  # Tailor resume for a specific job
-  python src/main.py tailor-resume https://example.com/job-posting
-        """,
     )
 
-    subparsers = parser.add_subparsers(dest="command", help="Available commands", required=True)
+    # ------------------------------------------------------------------
+    # Top-level: *agent* selection
+    # ------------------------------------------------------------------
+    agents_sub = parser.add_subparsers(dest="agent", required=True, help="Available AI agents")
+
+    # --------------------------- RESUME AGENT --------------------------
+    resume_parser = agents_sub.add_parser("resume", help="Resume tailoring agent")
+
+    resume_sub = resume_parser.add_subparsers(dest="command", required=True, help="Resume agent commands")
 
     # Extract command
-    extract_parser = subparsers.add_parser("extract", help="Extract metadata from a job URL")
+    extract_parser = resume_sub.add_parser("extract", help="Extract metadata from a job URL")
     extract_parser.add_argument(
         "job_url",
         type=str,
@@ -56,12 +56,15 @@ def parse_arguments(default_model: str) -> argparse.Namespace:
     )
 
     # Tailor resume command
-    tailor_parser = subparsers.add_parser("tailor-resume", help="Tailor resume for a specific job")
+    tailor_parser = resume_sub.add_parser("tailor", help="Tailor resume for a specific job")
     tailor_parser.add_argument(
         "job_url",
         type=str,
         help="Job posting URL (matches the URL property in Notion DB)",
     )
+
+    # Init command – verifies and patches the Notion DB schema
+    resume_sub.add_parser("init", help="Initialise / repair the Notion database schema")
 
     return parser.parse_args()
 
@@ -83,6 +86,22 @@ def display_results(extracted_metadata: dict[str, Any]) -> None:
         print(f"{key}: {value_str}")
 
 
+async def handle_init_command(settings: Settings) -> None:
+    """Verify and patch the Notion database so that all required properties are present."""
+
+    logger.info("Verifying Notion database schema – this may take a few seconds …")
+
+    notion_service = NotionSyncService(database_id=settings.NOTION_DATABASE_ID)
+
+    try:
+        await notion_service._ensure_required_properties()
+    except Exception as e:  # pragma: no cover – surface any unexpected errors
+        logger.error(f"Failed to initialise database schema: {str(e)}")
+        sys.exit(1)
+
+    logger.success("Database schema verified and up-to-date ✔️")
+
+
 async def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict[str, Any]:
     """Handle the extract command: pull metadata from a job URL and persist it in Notion (fully async)."""
 
@@ -94,6 +113,11 @@ async def handle_extract_command(args: argparse.Namespace, settings: Settings) -
     openai_service = OpenAIService(api_key=settings.OPENAI_API_KEY)
 
     notion_service = NotionSyncService(database_id=settings.NOTION_DATABASE_ID)
+
+    # Verify database schema first – we do **not** attempt to patch here.
+    if not await notion_service.is_database_verified():
+        logger.error("Notion database schema is incomplete or invalid. Run `python src/main.py init` first.")
+        sys.exit(2)
 
     # The synchronous schema check performed during initialisation closes
     # its temporary event-loop, leaving the internal client orphaned.  Create
@@ -109,11 +133,8 @@ async def handle_extract_command(args: argparse.Namespace, settings: Settings) -
     )
 
     # ------------------------------------------------------------------
-    # 2. Ensure the DB schema and fetch a fresh copy for the extractor
-    # ------------------------------------------------------------------
-    maybe_coro = notion_service._ensure_required_properties()
-    if asyncio.iscoroutine(maybe_coro):
-        await maybe_coro
+    # 2. Fetch the (already verified) database schema for the extractor
+    #    – no automatic patching here.
     database_schema = notion_service.get_database_schema()
 
     # ------------------------------------------------------------------
@@ -151,12 +172,18 @@ async def handle_extract_command(args: argparse.Namespace, settings: Settings) -
 
 
 async def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -> None:
-    """Handle the tailor-resume command to tailor resume for a specific job using Notion only."""
+    """Handle the `resume tailor` command to tailor the resume for a specific job using Notion only."""
 
     # Initialize services for resume tailoring...
     logger.info("Initializing services for resume tailoring...")
     openai_service = OpenAIService(api_key=settings.OPENAI_API_KEY)
     notion_service = NotionSyncService(database_id=settings.NOTION_DATABASE_ID)
+
+    # Verify database schema – exit early if not valid.
+    if not await notion_service.is_database_verified():
+        logger.error("Notion database schema is incomplete or invalid. Run `python src/main.py init` first.")
+        sys.exit(2)
+
     pdf_compiler = PDFCompiler()
     latex_service = LatexService(pdf_compiler=pdf_compiler, settings=settings)
     tailor_service = TailorService(
@@ -219,14 +246,16 @@ def main() -> None:
         # Parse command line arguments with settings default model5
         args = parse_arguments(default_model=settings.DEFAULT_MODEL_NAME)
 
-        # Handle different commands
-        if args.command == "extract":
+        # Dispatch based on selected agent & command
+        if args.agent == "resume" and args.command == "extract":
             job_metadata = asyncio.run(handle_extract_command(args, settings))
             display_results(job_metadata)
-        elif args.command == "tailor-resume":
+        elif args.agent == "resume" and args.command == "tailor":
             asyncio.run(handle_tailor_resume_command(args, settings))
+        elif args.agent == "resume" and args.command == "init":
+            asyncio.run(handle_init_command(settings))
         else:
-            print("Error: No command specified. Use --help for usage information.")
+            print("Error: Invalid command. Use --help for usage information.")
             sys.exit(1)
 
     except Exception as e:

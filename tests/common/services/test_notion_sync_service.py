@@ -16,15 +16,41 @@ from src.common.services.notion_sync_service import NotionSyncService
 def mock_api_service() -> MagicMock:
     """Create a mock NotionAPIService."""
     service = MagicMock()
-    # Provide a minimal yet valid database schema so that schema validation in
-    # ``NotionSyncService`` passes during tests.
+    # The payload must satisfy *Settings.REQUIRED_DATABASE_PROPERTIES* so that
+    # ``is_database_verified`` returns True in unit-tests.
     minimal_db_payload: dict[str, Any] = {
         "object": "database",
         "id": "test-db-id",
         "title": [],
         "properties": {
-            "Title": {"id": "prop_title", "type": "title", "name": "Title", "title": []},
-            "Job URL": {"id": "prop_url", "type": "url", "name": "Job URL", "url": {}},
+            "Job Title": {
+                "id": "prop_title",
+                "type": "title",
+                "name": "Job Title",
+                "title": [],
+                "description": "Job title",
+            },
+            "Company Name": {
+                "id": "prop_company",
+                "type": "rich_text",
+                "name": "Company Name",
+                "rich_text": {},
+                "description": "Company name",
+            },
+            "Job URL": {
+                "id": "prop_url",
+                "type": "url",
+                "name": "Job URL",
+                "url": {},
+                "description": "URL of the job posting #exclude",
+            },
+            "Resume": {
+                "id": "prop_resume",
+                "type": "files",
+                "name": "Resume",
+                "files": {},
+                "description": "Tailored resume for this job #exclude",
+            },
         },
     }
 
