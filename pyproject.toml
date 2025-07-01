@@ -2,6 +2,7 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
 name = "python_project_template"
 version = "0.1.0"
@@ -16,7 +17,6 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: Apache Software License", # Or your chosen license
     "Operating System :: OS Independent",
     "Development Status :: 3 - Alpha",
@@ -32,6 +32,7 @@ dependencies = [
     "notion_client",
     "crawl4ai",
     "pypandoc",
+    "types-requests",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +41,7 @@ dev = [
     "ruff",
     "pytest-cov",
     "pytest-mypy",
+    "mypy==1.16.0",
     "pre-commit",
 ]
 
@@ -51,7 +53,7 @@ packages = ["src"]
 # For a full list of rules, see: https://docs.astral.sh/ruff/rules/
 
 line-length = 120
-target-version = "py313"
+target-version = "py312"
 
 # Lint settings
 [tool.ruff.lint]
@@ -85,7 +87,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -124,11 +126,11 @@ exclude = [
 
 [tool.pytest.ini_options]
 # minversion = "6.0"
-addopts = "-ra -q --cov=src --cov-report=term-missing --mypy"
+addopts = "-ra -q --cov=src --cov-report=term-missing"
 testpaths = [
-    "tests",
+    "tests/"
 ]
-python_files = "*_test.py"
+python_files = ["test_*.py"]
 python_classes = "Test*"
 python_functions = "test_*"
 # Filter out warnings that are common but not always actionable

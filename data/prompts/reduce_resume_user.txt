@@ -1,0 +1,7 @@
+PAGES {page_count}/{goal_pages}
+
+CURRENT TEX SOURCE
+------------------
+```
+{current_tex_content}
+```

@@ -7,26 +7,19 @@ Notion database schemas.
 """
 
 import asyncio
-from enum import Enum
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler  # type: ignore
 from crawl4ai.async_configs import BrowserConfig, CacheMode, CrawlerRunConfig  # type: ignore
 from crawl4ai.models import CrawlResultContainer  # type: ignore
 
-from ..common.llm_clients import OpenAIClient
-from ..common.notion_service import NotionService
+from src.common.schemas.openai_schema import OpenAISchema
+
+from ..common.services.notion_sync_service import NotionSyncService
+from ..common.services.openai_service import OpenAIService
 from ..common.utils import read_file_content, replace_prompt_placeholders
 from ..core.config import get_settings
-from .cache import URLCache
-from .models import create_openai_schema_from_notion_database
-
-
-class ExtractionMethod(Enum):
-    """Available extraction methods."""
-
-    OPENAI_WEB_SEARCH = "openai_web_search"
-    CRAWL4AI_PLUS_GPT = "crawl4ai_plus_gpt"
+from .schema_utils import create_openai_schema_from_notion_database
 
 
 class ExtractorServiceError(Exception):
@@ -43,41 +36,41 @@ class ExtractorService:
     """
 
     def __init__(
-        self, openai_client: OpenAIClient, notion_service: NotionService, add_properties_options: bool = True
+        self,
+        openai_service: OpenAIService,
+        notion_service: NotionSyncService | None = None,
+        add_properties_options: bool = True,
     ) -> None:
-        """Initialize the ExtractorService with required clients.
+        """Initialize the ExtractorService with required services.
 
         Args:
-            openai_client: An initialized OpenAI client for LLM interactions.
-            notion_service: An initialized Notion service for database operations.
+            openai_service: An initialized OpenAI service for LLM interactions.
+            notion_service: Optional Notion sync service for database operations (not used directly yet).
             add_properties_options: Whether to add options to select/multi_select properties.
         """
-        self.openai_client = openai_client
+        self.openai_service = openai_service
         self.notion_service = notion_service
         self.add_properties_options = add_properties_options
-        self.url_cache = URLCache()
 
     def extract_metadata_from_job_url(
         self,
         job_url: str,
         notion_database_schema: dict[str, Any],
         model_name: str,
-        extraction_method: ExtractionMethod = ExtractionMethod.OPENAI_WEB_SEARCH,
     ) -> dict[str, Any]:
-        """Extract structured metadata from a job posting URL.
+        """Extract structured metadata from a job posting URL using crawl4ai + OpenAI.
 
         Args:
             job_url: The URL of the job posting to analyze.
             notion_database_schema: The Notion database properties schema for structuring the output.
             model_name: The name of the OpenAI model to use.
-            extraction_method: The extraction method to use.
 
         Returns:
             A dictionary containing the extracted metadata in a format compatible with OpenAI's
             structured output, ready for conversion to Notion format.
 
         Raises:
-            ExtractorServiceError: If there's an error during the extraction process.
+            ExtractorServiceError: If there's an error during the   process.
         """
         if not job_url.strip():
             raise ExtractorServiceError("Job URL cannot be empty")
@@ -86,86 +79,96 @@ class ExtractorService:
             raise ExtractorServiceError("Notion database schema cannot be empty")
 
         try:
-            if extraction_method == ExtractionMethod.OPENAI_WEB_SEARCH:
-                return self._extract_with_openai_web_search(job_url, notion_database_schema, model_name)
-            elif extraction_method == ExtractionMethod.CRAWL4AI_PLUS_GPT:
-                return self._extract_with_crawl4ai_plus_gpt(job_url, notion_database_schema, model_name)
-            else:
-                raise ExtractorServiceError(f"Unsupported extraction method: {extraction_method}")
-
+            extracted_metadata = self._extract_metadata_with_crawl4ai(job_url, notion_database_schema, model_name)
         except Exception as e:
             if isinstance(e, ExtractorServiceError):
                 raise
             raise ExtractorServiceError(f"Error during metadata extraction from URL: {str(e)}") from e
 
-    def _extract_with_openai_web_search(
+        return extracted_metadata
+
+    def _extract_metadata_with_crawl4ai(
         self, job_url: str, notion_database_schema: dict[str, Any], model_name: str
     ) -> dict[str, Any]:
-        """Extract metadata using OpenAI's web search capabilities."""
+        """
+        Extract metadata from a job posting URL using Crawl4AI and OpenAI.
+
+        - Retrieves or crawls markdown content for the job posting.
+        - Ensures the markdown is uploaded to Notion (creating the page if needed).
+        - Extracts structured metadata using OpenAI.
+        - Returns metadata including markdown and Notion job/page ID.
+        """
+        markdown_content = self._crawl_markdown(job_url)
+
         # Convert Notion schema to OpenAI JSON Schema format
         openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
 
-        # Load the prompt from file using configured paths
-        settings = get_settings()
-        prompt_path = settings.PROMPTS_DIRECTORY / settings.METADATA_EXTRACTION_PROMPT_FILE
-        sys_prompt_template = read_file_content(prompt_path)
-        sys_prompt = replace_prompt_placeholders(sys_prompt_template, URL=job_url)
+        # Prepare prompt
+        prompt = self._prepare_extraction_prompt(markdown_content)
 
-        return self.openai_client.get_structured_response(
-            sys_prompt=sys_prompt,
-            user_prompt=None,
+        # Extract structured metadata
+        metadata = self._extract_structured_metadata(
+            prompt=prompt,
             model_name=model_name,
-            schema=openai_schema,
-            use_web_search=True,
+            openai_schema=openai_schema,
         )
 
-    def _extract_with_crawl4ai_plus_gpt(
-        self, job_url: str, notion_database_schema: dict[str, Any], model_name: str
-    ) -> dict[str, Any]:
-        """Extract metadata using Crawl4AI for crawling + GPT for extraction."""
+        return metadata
 
-        # Check cache first
-        cached_content = self.url_cache.get_cached_content(job_url)
-        if cached_content:
-            markdown_content = cached_content
-        else:
-            # Crawl the URL to get markdown content using async crawler
-            async def crawl_url_async(url: str) -> str:
-                # Create configurations using the helper methods
-                browser_config = self._create_browser_config()
-                run_config = self._create_run_config()
+    def _crawl_markdown(self, job_url: str) -> str:
+        """
+        Crawl the given URL asynchronously and return markdown content.
+        """
 
-                async with AsyncWebCrawler(config=browser_config) as crawler:
-                    result = await crawler.arun(url=url, config=run_config)
-                    if not isinstance(result, CrawlResultContainer):
-                        raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
-                    # Handle the result properly by accessing its attributes with type: ignore
-                    if not result.success:
-                        raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
+        async def crawl_url_async(url: str) -> str:
+            browser_config = self._create_browser_config()
+            run_config = self._create_run_config()
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                result = await crawler.arun(url=url, config=run_config)
+                if not isinstance(result, CrawlResultContainer):
+                    raise ExtractorServiceError("Crawl result is not a valid CrawlResult instance")
+                if not result.success:
+                    raise ExtractorServiceError(f"Failed to crawl URL: {result.error_message}")
+                return str(result.markdown)
 
-                    return str(result.markdown)
+        # If we're already inside an event-loop (e.g. called from an async
+        # CLI command) ``asyncio.run`` would raise.  Detect this case and use
+        # a dedicated temporary loop instead.
 
-            # Run the async crawler
-            markdown_content = asyncio.run(crawl_url_async(job_url))
+        try:
+            running_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            running_loop = None
 
-            # Cache the crawled content
-            self.url_cache.cache_content(job_url, markdown_content)
+        if running_loop is None:
+            return asyncio.run(crawl_url_async(job_url))
 
-        # Convert Notion schema to OpenAI JSON Schema format
-        openai_schema = create_openai_schema_from_notion_database(notion_database_schema, self.add_properties_options)
+        tmp_loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(tmp_loop)
+            return tmp_loop.run_until_complete(crawl_url_async(job_url))
+        finally:
+            tmp_loop.close()
+            asyncio.set_event_loop(running_loop)
 
-        # Load and build prompt from template using configured paths
+    def _prepare_extraction_prompt(self, markdown_content: str) -> str:
+        """
+        Load and build the extraction prompt from template using the markdown content.
+        """
         settings = get_settings()
-        prompt_path = settings.PROMPTS_DIRECTORY / settings.CRAWL4AI_PROMPT_FILE
+        prompt_path = settings.PROMPTS_DIRECTORY / settings.EXTRACT_METADATA
         prompt_template = read_file_content(prompt_path)
-        prompt = replace_prompt_placeholders(prompt_template, CONTENT=markdown_content)
+        return replace_prompt_placeholders(prompt_template, CONTENT=markdown_content)
 
-        # Use OpenAI for structured extraction
-        return self.openai_client.get_structured_response(
-            sys_prompt=None,
-            user_prompt=prompt,
+    def _extract_structured_metadata(self, prompt: str, model_name: str, openai_schema: OpenAISchema) -> dict[str, Any]:
+        """
+        Use OpenAI for structured metadata extraction.
+        """
+        return self.openai_service.get_structured_response(
+            sys_prompt=prompt,
+            user_prompt=None,
             model_name=model_name,
-            schema=openai_schema,
+            schema=openai_schema.dict(),
             use_web_search=False,
         )
 
@@ -212,11 +215,11 @@ class ExtractorService:
         config_params = {
             "cache_mode": CacheMode.ENABLED,
             "page_timeout": settings.CRAWL4AI_TIMEOUT_SECONDS * 1000,
-            "delay_before_return_html": 2.0,
+            "delay_before_return_html": 5.0,
             "remove_overlay_elements": True,
             "excluded_tags": ["script", "style", "nav", "footer"],
             "only_text": False,
-            "word_count_threshold": 10,
+            "word_count_threshold": 200,
             "bypass_cache": False,
             "screenshot": False,
         }

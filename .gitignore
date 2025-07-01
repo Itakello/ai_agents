@@ -71,5 +71,10 @@ Thumbs.db
 # DB
 *.cache
 
-# Exported files
-exported_pdfs/
+# Output files
+out/
+latex_build/
+
+# Input files
+data/master.tex
+data/out

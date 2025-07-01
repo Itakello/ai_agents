@@ -1,7 +1,7 @@
 """
-LLM Clients module for interacting with various language model providers.
+OpenAI Service module for interacting with various language model providers.
 
-This module provides client implementations for different LLM providers, starting with OpenAI.
+This module provides service implementations for different LLM providers, starting with OpenAI.
 """
 
 import json
@@ -16,13 +16,11 @@ from openai.types.responses import (
     WebSearchToolParam,
 )
 
-from src.core.config import get_settings
 
+class OpenAIService:
+    """Service for interacting with OpenAI's Responses API.
 
-class OpenAIClient:
-    """Client for interacting with OpenAI's Responses API.
-
-    This client provides a simple interface to interact with OpenAI's models
+    This service provides a simple interface to interact with OpenAI's models
     using the Responses API, which is a stateful API that combines chat completions
     and assistants API features.
 
@@ -30,10 +28,16 @@ class OpenAIClient:
         api_key: The OpenAI API key for authentication.
     """
 
-    def __init__(self, api_key: str) -> None:
-        """Initialize the OpenAI client with the provided API key."""
+    def __init__(self, api_key: str, temperature: float = 0.7) -> None:
+        """Initialize the OpenAI service with the provided API key and temperature.
+
+        Args:
+            api_key: The OpenAI API key for authentication.
+            temperature: The temperature for model responses (default: 0.7).
+        """
         self.client = openai.OpenAI(api_key=api_key)
         self.response_id: str | None = None
+        self.temperature: float = temperature
 
     def _create_messages(self, sys_prompt: str | None, user_prompt: str | None) -> ResponseInputParam:
         """Create a list of messages for the OpenAI API.
@@ -44,7 +48,12 @@ class OpenAIClient:
 
         Returns:
             A list of message dictionaries formatted for the OpenAI API.
+
+        Raises:
+            ValueError: If both sys_prompt and user_prompt are None.
         """
+        if sys_prompt is None and user_prompt is None:
+            raise ValueError("At least one of sys_prompt or user_prompt must be provided (not both None).")
         messages: list[ResponseInputItemParam] = []
         if sys_prompt:
             messages.append({"role": "system", "content": sys_prompt})
@@ -64,6 +73,7 @@ class OpenAIClient:
             The model's response as a string.
 
         Raises:
+            ValueError: If both sys_prompt and user_prompt are None.
             openai.APIError: If there's an error communicating with the OpenAI API.
         """
 
@@ -74,7 +84,7 @@ class OpenAIClient:
             response = self.client.responses.create(
                 input=messages,
                 model=model_name,
-                temperature=get_settings().OPENAI_TEMPERATURE,
+                temperature=self.temperature if model_name != "o4-mini" else NOT_GIVEN,
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
             )
 
@@ -119,6 +129,7 @@ class OpenAIClient:
             Structured data extracted from the model's response.
 
         Raises:
+            ValueError: If both sys_prompt and user_prompt are None.
             ValueError: If there's an error with the API call or response parsing.
         """
 
@@ -150,7 +161,7 @@ class OpenAIClient:
                 input=messages,
                 model=model_name,
                 text=text_config,
-                temperature=get_settings().OPENAI_TEMPERATURE,
+                temperature=self.temperature,
                 previous_response_id=self.response_id if self.response_id else NOT_GIVEN,
                 tools=tools,
             )

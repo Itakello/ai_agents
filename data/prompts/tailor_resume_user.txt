@@ -1,0 +1,11 @@
+JOB METADATA
+------------
+{job_metadata_block}
+
+RULES
+-----
+{tailoring_rules}
+
+MASTER RESUME
+-------------
+{tex_master_resume}

@@ -5,6 +5,7 @@ with support for .env files. It uses pydantic for validation and type conversion
 """
 
 from pathlib import Path
+from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -45,7 +46,6 @@ class Settings(BaseSettings):
     PDFLATEX_COMMAND: str = "pdflatex"
     LATEXDIFF_COMMAND: str = "latexdiff"
     DEFAULT_MODEL_NAME: str = "gpt-4.1"
-    DEFAULT_OUTPUT_DIR: Path = Path("output")
     TEST_NOTION_PAGE_ID: str | None = None
 
     # OpenAI API settings
@@ -53,9 +53,29 @@ class Settings(BaseSettings):
     OPENAI_MAX_RETRIES: int = 3
     OPENAI_TIMEOUT_SECONDS: int = 30
 
-    # Default CLI settings
-    DEFAULT_EXTRACTION_METHOD: str = "crawl4ai_plus_gpt"
-    DEFAULT_EXPORT_PDF_DIR: str = "exported_pdfs"
+    # Notion special properties
+    JOB_URL_PROPERTY_NAME: str = "Job URL"
+    TAILORED_RESUME_PROPERTY_NAME: str = "Resume"
+
+    # Required database schema configuration
+    REQUIRED_DATABASE_PROPERTIES: dict[str, dict[str, Any]] = {
+        "Job Title": {
+            "type": "title",
+            "description": "Job title",
+        },
+        "Company Name": {
+            "type": "rich_text",
+            "description": "Company name",
+        },
+        "Job URL": {
+            "type": "url",
+            "description": "URL of the job posting #exclude",
+        },
+        "Resume": {
+            "type": "files",
+            "description": "Tailored resume for this job #exclude",
+        },
+    }
 
     # Crawl4AI settings
     CRAWL4AI_HEADLESS: bool = True
@@ -71,6 +91,9 @@ class Settings(BaseSettings):
     CACHE_MAX_ENTRIES: int = 1000
     CACHE_DIRECTORY: Path = Path(".cache")
 
+    # Development settings
+    DEV_MODE: bool = False
+
     # PDF Export settings
     PDF_MAIN_FONT: str = "FiraCode Nerd Font"
     PDF_SANS_FONT: str = "FiraCode Nerd Font"
@@ -82,10 +105,14 @@ class Settings(BaseSettings):
     PDF_ENGINE_FALLBACK: str = "lualatex"
 
     # File paths and directories
-    PROMPTS_DIRECTORY: Path = Path("prompts")
-    METADATA_EXTRACTION_PROMPT_FILE: str = "sys_prompt_extract_metadata.txt"
-    CRAWL4AI_PROMPT_FILE: str = "crawl4ai_plus_gpt_prompt.txt"
-    TEMP_DIRECTORY: Path = Path("tmp")
+    PROMPTS_DIRECTORY: Path = Path("data/prompts")
+    EXTRACT_METADATA: str = "extract_metadata.txt"
+    TAILOR_RESUME_SYSTEM_PROMPT_FILENAME: str = "tailor_resume_sys.txt"
+    TAILOR_RESUME_USER_PROMPT_FILENAME: str = "tailor_resume_user.txt"
+    TAILORING_RULES_FILENAME: str = "tailoring_rules_default.txt"
+    # Prompt filename for reducing an overlong resume PDF to 1 page
+    # Uses `data/prompts/reduce_resume_user.txt` (context-only user prompt)
+    PDF_REDUCTION_PROMPT_FILENAME: str = "reduce_resume_user.txt"
 
     # Performance and reliability settings
     API_KEY_MIN_LENGTH: int = 10
@@ -93,6 +120,17 @@ class Settings(BaseSettings):
     API_RETRY_DELAY_SECONDS: float = 1.0
     REQUEST_BACKOFF_MULTIPLIER: float = 2.0
     MAX_OUTPUT_FILES_TO_KEEP: int = 100
+
+    # Retry settings for diff application
+    DIFF_MAX_RETRIES: int = 3
+    PDF_REDUCTION_MAX_RETRIES: int = 10  # Max attempts to reduce PDF Length
+    GOAL_PAGE_COUNT: int = 1
+
+    # File Names
+    TAILORED_RESUME_STEM: str = "tailored_resume"
+    TAILORED_RESUME_DIFF_STEM: str = "tailored_resume_diff"
+
+    BASE_OUTPUT_DIR: Path = Path("out")
 
     @field_validator("OPENAI_API_KEY", "NOTION_API_KEY")
     @classmethod
@@ -132,15 +170,6 @@ class Settings(BaseSettings):
             raise ValueError("Temperature must be between 0 and 2")
         return v
 
-    @field_validator("DEFAULT_EXTRACTION_METHOD")
-    @classmethod
-    def validate_extraction_method(cls, v: str) -> str:
-        """Validate extraction method is supported."""
-        valid_methods = {"openai_web_search", "crawl4ai_plus_gpt"}
-        if v not in valid_methods:
-            raise ValueError(f"Extraction method must be one of: {', '.join(valid_methods)}")
-        return v
-
 
 # Global settings instance - using a function to ensure it's only created once
 _settings: Settings | None = None
@@ -162,7 +191,6 @@ if __name__ == "__main__":
     print("Configuration loaded successfully:")
     print(f"LOG_LEVEL: {settings.LOG_LEVEL}")
     print(f"DEFAULT_MODEL_NAME: {settings.DEFAULT_MODEL_NAME}")
-    print(f"DEFAULT_OUTPUT_DIR: {settings.DEFAULT_OUTPUT_DIR}")
     print(f"PDFLATEX_COMMAND: {settings.PDFLATEX_COMMAND}")
     print(f"LATEXDIFF_COMMAND: {settings.LATEXDIFF_COMMAND}")
 

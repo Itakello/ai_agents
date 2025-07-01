@@ -15,7 +15,7 @@ description: Python Coding Guidelines
 ## 2. Type Hinting (Python 3.10+)
 - **Mandatory Typing**: Use type hints for all function signatures (arguments and return types) and variable declarations where appropriate.
 - **Modern Syntax**:
-    - Prefer `list[int]` over `typing.List[int]`.
+    - Prefer `list` over `typing.List`, `dict` over `typing.Dict` and `set` over `typing.Set`.
     - Use `|` for union types (e.g., `int | str`) instead of `typing.Union`.
     - Use `str | None` for optional types instead of `typing.Optional[str]`.
 - **Pydantic**:

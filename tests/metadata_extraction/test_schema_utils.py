@@ -3,7 +3,7 @@
 from typing import Any
 from unittest.mock import patch
 
-from src.metadata_extraction.models import (
+from src.metadata_extraction.schema_utils import (
     _generate_example_description,
     _should_exclude_property,
     _should_keep_options,
@@ -50,7 +50,7 @@ class TestHelperFunctions:
         assert not _should_keep_options("normal description")
         assert not _should_keep_options("description with #other-directive")
 
-    @patch("src.metadata_extraction.models.random.sample")
+    @patch("src.metadata_extraction.schema_utils.random.sample")
     def test_generate_example_description_with_options(self, mock_sample: Any) -> None:
         """Test example description generation with options."""
         options = [
@@ -85,12 +85,12 @@ class TestNotionPropertyToOpenAISchema:
     def test_rich_text_property(self) -> None:
         notion_prop = {"type": "rich_text"}
         result = notion_property_to_openai_schema(notion_prop, add_options=False)
-        assert result == {"type": "string"}
+        assert result == {"type": "string", "maxLength": 2000}
 
     def test_title_property(self) -> None:
         notion_prop = {"type": "title"}
         result = notion_property_to_openai_schema(notion_prop, add_options=False)
-        assert result == {"type": "string"}
+        assert result == {"type": "string", "maxLength": 2000}
 
     def test_number_property(self) -> None:
         notion_prop = {"type": "number"}
@@ -198,11 +198,11 @@ class TestOpenAIDataToNotionProperty:
 
     def test_rich_text_conversion(self) -> None:
         result = openai_data_to_notion_property("Hello World", "rich_text")
-        assert result == {"rich_text": [{"text": {"content": "Hello World"}}]}
+        assert result == {"rich_text": [{"type": "text", "text": {"content": "Hello World"}}]}
 
     def test_title_conversion(self) -> None:
         result = openai_data_to_notion_property("Job Title", "title")
-        assert result == {"rich_text": [{"text": {"content": "Job Title"}}]}
+        assert result == {"title": [{"type": "text", "text": {"content": "Job Title"}}]}
 
     def test_number_conversion(self) -> None:
         result = openai_data_to_notion_property(42, "number")
@@ -303,13 +303,13 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "salary": {"type": "number"},
             "is_remote": {"type": "checkbox"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         expected = {
             "type": "object",
             "properties": {
-                "job_title": {"type": "string"},
-                "company": {"type": "string"},
+                "job_title": {"type": "string", "maxLength": 2000},
+                "company": {"type": "string", "maxLength": 2000},
                 "salary": {"type": "number"},
                 "is_remote": {"type": "boolean"},
             },
@@ -328,12 +328,12 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "formula_field": {"type": "formula"},
             "rollup_field": {"type": "rollup"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Only job_title should be included
         expected = {
             "type": "object",
-            "properties": {"job_title": {"type": "string"}},
+            "properties": {"job_title": {"type": "string", "maxLength": 2000}},
             "required": ["job_title"],
             "additionalProperties": False,
         }
@@ -352,7 +352,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=True)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=True).dict()
 
         expected = {
             "type": "object",
@@ -369,13 +369,13 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "internal_notes": {"type": "rich_text", "description": "Internal notes #exclude"},
             "company": {"type": "rich_text"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         expected = {
             "type": "object",
             "properties": {
-                "job_title": {"type": "string"},
-                "company": {"type": "string"},
+                "job_title": {"type": "string", "maxLength": 2000},
+                "company": {"type": "string", "maxLength": 2000},
             },
             "required": ["job_title", "company"],
             "additionalProperties": False,
@@ -398,7 +398,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             }
         }
         # Even with add_options=False, #keep-options should force inclusion
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         expected = {
             "type": "object",
@@ -414,7 +414,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
         }
         assert result == expected
 
-    @patch("src.metadata_extraction.models.random.sample")
+    @patch("src.metadata_extraction.schema_utils.random.sample")
     def test_create_schema_example_generation(self, mock_sample: Any) -> None:
         """Test that examples are generated for select properties when options not included."""
         mock_sample.return_value = [{"name": "Junior", "id": "1"}, {"name": "Senior", "id": "2"}]
@@ -431,13 +431,13 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Should generate example description
         assert "description" in result["properties"]["experience_level"]
         assert "e.g. Junior, Senior, ..." in result["properties"]["experience_level"]["description"]
 
-    @patch("src.metadata_extraction.models.random.sample")
+    @patch("src.metadata_extraction.schema_utils.random.sample")
     def test_create_schema_preserve_original_description_with_examples(self, mock_sample: Any) -> None:
         """Test that original descriptions are preserved when adding examples."""
         mock_sample.return_value = [{"name": "Low", "id": "1"}, {"name": "High", "id": "2"}]
@@ -455,7 +455,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Should combine original description with examples
         expected_desc = "Task priority level | e.g. Low, High, ..."
@@ -476,7 +476,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Should generate examples for multi_select
         assert "description" in result["properties"]["skills"]
@@ -498,7 +498,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
                 },
             }
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Should generate examples for status
         assert "description" in result["properties"]["workflow_status"]
@@ -527,7 +527,7 @@ class TestCreateOpenAISchemaFromNotionDatabase:
             "created_time": {"type": "created_time"},
             "is_public": {"type": "checkbox"},
         }
-        result = create_openai_schema_from_notion_database(notion_properties, add_options=False)
+        result = create_openai_schema_from_notion_database(notion_properties, add_options=False).dict()
 
         # Check what's included and excluded
         assert "title" in result["properties"]
@@ -571,7 +571,7 @@ class TestConvertOpenAIResponseToNotionUpdate:
 
         expected = {
             "properties": {
-                "job_title": {"rich_text": [{"text": {"content": "Software Engineer"}}]},
+                "job_title": {"title": [{"type": "text", "text": {"content": "Software Engineer"}}]},
                 "salary": {"number": 75000.0},
                 "is_remote": {"checkbox": True},
             }
@@ -588,9 +588,7 @@ class TestConvertOpenAIResponseToNotionUpdate:
         result = convert_openai_response_to_notion_update(openai_response, notion_properties)
 
         expected = {
-            "properties": {
-                "job_title": {"rich_text": [{"text": {"content": "Software Engineer"}}]},
-            }
+            "properties": {"job_title": {"title": [{"type": "text", "text": {"content": "Software Engineer"}}]}}
         }
         assert result == expected
 
@@ -607,9 +605,7 @@ class TestConvertOpenAIResponseToNotionUpdate:
         result = convert_openai_response_to_notion_update(openai_response, notion_properties)
 
         expected = {
-            "properties": {
-                "job_title": {"rich_text": [{"text": {"content": "Software Engineer"}}]},
-            }
+            "properties": {"job_title": {"title": [{"type": "text", "text": {"content": "Software Engineer"}}]}}
         }
         assert result == expected
 
@@ -640,7 +636,7 @@ class TestNotionPropertyToOpenAISchemaEnhanced:
         """Test that descriptions are preserved in the schema."""
         notion_prop = {"type": "rich_text", "description": "A detailed description of this field"}
         result = notion_property_to_openai_schema(notion_prop, add_options=False)
-        expected = {"type": "string", "description": "A detailed description of this field"}
+        expected = {"type": "string", "maxLength": 2000, "description": "A detailed description of this field"}
         assert result == expected
 
     def test_select_with_empty_options_list(self) -> None:
