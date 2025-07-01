@@ -4,7 +4,7 @@ A growing collection of command-line "agents" that plug directly into your Notio
 
 ---
 
-## 🚀 Quick Start (conda)
+## 🚀 Quick Start
 
 ```bash
 # 1 Create env (Python 3.12) and activate
@@ -23,7 +23,7 @@ python src/main.py resume init
 # 5 Extract metadata from a job ad
 python src/main.py resume extract "https://careers.example.com/jobs/1234"
 
-# 6 Generate a laser-focused PDF resume
+# 6 Generate a laser-focused PDF resume (uses the metadata now stored in Notion, *not* the raw job ad)
 python src/main.py resume tailor "https://careers.example.com/jobs/1234"
 ```
 
@@ -42,6 +42,18 @@ python src/main.py resume tailor "https://careers.example.com/jobs/1234"
 | `resume extract <job_url>` | Scrapes & analyses the job posting, producing structured metadata and saving it to Notion. |
 | `resume tailor <job_url>` | Creates a PDF resume tailored to the job (based on `template.tex`) and uploads it to Notion. |
 
+The Resume Tailoring agent exposes three sub-commands:
+
+* **init** – verifies (and automatically repairs) your Notion database schema. Run this once (or any time you change the DB).
+* **extract &lt;job_url&gt;** – scrapes & analyses a job posting, then saves rich, structured metadata back to Notion.
+* **tailor &lt;job_url&gt;** – renders `data/template.tex` into a PDF resume **solely using the metadata stored in Notion**. (The richer the metadata – e.g. "Key Achievements", "Core Competencies", "Tech Stack" – the better the tailoring quality.)
+
+Run any of the above with:
+
+```bash
+python src/main.py resume <command> [...]
+```
+
 </details>
 
 Future agents (e.g. *Job-Application Tracker*, *Content Planner*, …) will be added under their own top-level command (`python src/main.py <agent> <command>`).
@@ -54,6 +66,8 @@ When you create properties in your Notion database you can add special tags in t
 
 * `#exclude` – exclude the property from the AI JSON schema (useful for internal fields like status flags, URLs, etc.).
 * `#keep-options` – for `select` / `multi_select` / `status` types, always include the option list as an enum even when `--add-properties-options` is false.
+
+> **Tip:** Add additional context-rich properties (e.g. *Key Achievements*, *Core Competencies*, *Mission Statement*) to your Notion page. The more context the LLM has, the better it can tailor your resume.
 
 ---
 
