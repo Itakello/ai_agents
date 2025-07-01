@@ -372,6 +372,17 @@ class NotionSyncService:
                     prop_update["description"] = req_desc
                     needs_update = True
 
+                # ------------------------------------------------------------------
+                # Ensure the payload contains **at least one** type-specific key.
+                # The Notion API will reject updates that only modify generic
+                # keys (such as "description") without including the property
+                # type (e.g. "title", "rich_text", …).  If we haven’t added the
+                # type above (because the *type* already matched) we include an
+                # *empty* stub so that the request validates.
+                # ------------------------------------------------------------------
+                if needs_update and req_type not in prop_update:
+                    prop_update[req_type] = {}
+
                 if needs_update:
                     update_payload[req_name] = prop_update
 
