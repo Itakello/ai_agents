@@ -10,7 +10,11 @@ import asyncio
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler  # type: ignore
-from crawl4ai.async_configs import BrowserConfig, CacheMode, CrawlerRunConfig  # type: ignore
+from crawl4ai.async_configs import (  # type: ignore
+    BrowserConfig,
+    CacheMode,
+    CrawlerRunConfig,
+)
 from crawl4ai.models import CrawlResultContainer  # type: ignore
 
 from src.common.schemas.openai_schema import OpenAISchema

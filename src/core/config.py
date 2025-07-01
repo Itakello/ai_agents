@@ -34,6 +34,28 @@ class Settings(BaseSettings):
         extra="ignore",
         env_nested_delimiter="__",
     )
+    """Application settings loaded from environment variables.
+
+    Required settings:
+        OPENAI_API_KEY: API key for OpenAI
+        NOTION_API_KEY: API key for Notion
+        NOTION_DATABASE_ID: ID of the Notion database to use
+        MASTER_RESUME_PATH: Path to the master resume .tex file
+
+    Optional settings with defaults:
+        LOG_LEVEL: Logging level (default: "INFO")
+        PDFLATEX_COMMAND: Path to pdflatex executable (default: "pdflatex")
+        LATEXDIFF_COMMAND: Path to latexdiff executable (default: "latexdiff")
+        DEFAULT_MODEL_NAME: OpenAI model to use (default: "gpt-4.1")
+        DEFAULT_OUTPUT_DIR: Directory for output files (default: "./output")
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        env_nested_delimiter="__",
+    )
 
     # Required settings
     OPENAI_API_KEY: str = Field(..., description="API key for OpenAI")

@@ -21,7 +21,8 @@ class NotionPropertySchemaTypeDetails(BaseModel):
     """
 
     options: list[NotionSelectOption] | None = Field(
-        default=None, description="Options for select, multi_select, or status properties."
+        default=None,
+        description="Options for select, multi_select, or status properties.",
     )
     # Add other type-specific fields here, e.g.:
     # formula: dict[str, Any] | None = Field(default=None, description="Formula details for formula properties.")
