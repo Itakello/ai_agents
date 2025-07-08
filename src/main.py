@@ -102,7 +102,7 @@ async def handle_init_command(settings: Settings) -> None:
     logger.success("Database schema verified and up-to-date ✔️")
 
 
-async def handle_extract_command(args: argparse.Namespace, settings: Settings) -> dict[str, Any]:
+async def handle_resume_extract_command(args: argparse.Namespace, settings: Settings) -> dict[str, Any]:
     """Handle the extract command: pull metadata from a job URL and persist it in Notion (fully async)."""
 
     # ------------------------------------------------------------------
@@ -173,7 +173,7 @@ async def handle_extract_command(args: argparse.Namespace, settings: Settings) -
     return extracted_metadata
 
 
-async def handle_tailor_resume_command(args: argparse.Namespace, settings: Settings) -> None:
+async def handle_resume_tailor_command(args: argparse.Namespace, settings: Settings) -> None:
     """Handle the `resume tailor` command to tailor the resume for a specific job using Notion only."""
 
     # Initialize services for resume tailoring...
@@ -250,10 +250,10 @@ def main() -> None:
 
         # Dispatch based on selected agent & command
         if args.agent == "resume" and args.command == "extract":
-            job_metadata = asyncio.run(handle_extract_command(args, settings))
+            job_metadata = asyncio.run(handle_resume_extract_command(args, settings))
             display_results(job_metadata)
         elif args.agent == "resume" and args.command == "tailor":
-            asyncio.run(handle_tailor_resume_command(args, settings))
+            asyncio.run(handle_resume_tailor_command(args, settings))
         elif args.agent == "resume" and args.command == "init":
             asyncio.run(handle_init_command(settings))
         else:

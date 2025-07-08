@@ -79,7 +79,7 @@ class Settings(BaseSettings):
 
     # Crawl4AI settings
     CRAWL4AI_HEADLESS: bool = True
-    CRAWL4AI_TIMEOUT_SECONDS: int = 30
+    CRAWL4AI_TIMEOUT_SECONDS: int = 45
     CRAWL4AI_USER_AGENT: str = "Job-Finder-Assistant/1.0"
     CRAWL4AI_MAX_RETRIES: int = 3
     CRAWL4AI_RETRY_DELAY_SECONDS: int = 2
