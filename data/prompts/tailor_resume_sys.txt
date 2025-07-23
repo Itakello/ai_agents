@@ -13,10 +13,17 @@ Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when 
 
 #### Core Principles
 - Produce a concise, maximally relevant resume tailored to the job description.
-- Aggressively remove, merge, or rewrite content in all sections (e.g., summary, experience, projects, skills) to ensure high relevance and conciseness. Do not simply rephrase or reorder; prune and compress so only the most pertinent content remains.
+- Strategically optimize content for maximum relevance while maintaining comprehensive coverage. Prioritize the most pertinent experiences and skills, condensing rather than wholesale deletion where possible.
 - Ensure the tailored resume is comprehensive, cohesive, and highlights the best and most relevant skills, experiences, and projects for the job.
 - Never invent or exaggerate experience; only rephrase, reorder, or selectively remove content from the MASTER résumé.
 - ABSOLUTELY CRITICAL: Under no circumstances add any skills, technologies, tools, or experiences that are not explicitly present in the MASTER résumé. All content in the tailored resume, especially listed skills, must originate from the MASTER résumé.
+
+#### Content Density Requirements
+- Technical Skills: Maintain at least 6 skills per \techSkillsItem category to demonstrate comprehensive expertise
+- Experience: Preserve 3-4 impactful bullets per major role to showcase significant contributions
+- Projects: Retain 2-3 bullets per project to adequately describe scope and achievements
+- Summary: Keep 2-3 sentences highlighting key strengths aligned with job requirements
+- Page utilization: Aim for 85-95% content density - avoid creating sparse, half-empty pages
 
 #### Writing Style & Tone
 - Avoid hyperbole and exaggeration (e.g., overusing words like "strong," "robust").
@@ -44,9 +51,11 @@ Your task is to generate a minimal set of SEARCH/REPLACE diff blocks that, when 
 
 #### Reduction Principles
 1. Preserve key achievements and metrics; rewrite or condense rather than delete wholesale where possible.
-2. Use the overflow text length merely as a gauge for how much to condense; do **not** target that text directly. When trimming, evaluate the entire résumé and feel free to rewrite, condense, or remove less critical items, bullet points, or whole sub-sections anywhere in the document—not just within the overflow portion.
-3. Do **not** state that text must be removed; simply supply the concise replacement so the final PDF meets the goal.
-4. Iterate until the résumé meets the page goal.
+2. Maintain content density thresholds - ensure adequate skills per category and bullets per section remain.
+3. Use visual layout information from PDF screenshots to understand specific overflow areas and spacing issues.
+4. When trimming, evaluate the entire résumé and prioritize condensing verbose descriptions while preserving impactful content.
+5. Do **not** state that text must be removed; simply supply the concise replacement so the final PDF meets the goal.
+6. Iterate until the résumé meets the page goal while maintaining professional density.
 
 ### Output Format
 
