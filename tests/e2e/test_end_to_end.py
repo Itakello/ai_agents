@@ -54,16 +54,18 @@ class TestEndToEnd:
 
             # Setup mock services
             mock_notion_instance = mock_notion.return_value
-            mock_notion_instance.get_database_schema.return_value = {
-                "properties": {
-                    "title": {"type": "title"},
-                    "company": {"type": "rich_text"},
-                    "location": {"type": "rich_text"},
-                    "description": {"type": "rich_text"},
-                    "requirements": {"type": "multi_select"},
-                    "url": {"type": "url"},
+            mock_notion_instance.get_database_schema = AsyncMock(
+                return_value={
+                    "properties": {
+                        "title": {"type": "title"},
+                        "company": {"type": "rich_text"},
+                        "location": {"type": "rich_text"},
+                        "description": {"type": "rich_text"},
+                        "requirements": {"type": "multi_select"},
+                        "url": {"type": "url"},
+                    }
                 }
-            }
+            )
             mock_notion_instance.save_or_update_extracted_data = AsyncMock()
             mock_notion_instance.find_page_by_url = AsyncMock()
             mock_notion_instance.find_page_by_url.return_value = mock_job_metadata
@@ -76,7 +78,7 @@ class TestEndToEnd:
             main()
 
             # Verify the complete workflow
-            mock_notion_instance.get_database_schema.assert_called_once()
+            mock_notion_instance.get_database_schema.assert_awaited_once()
             mock_extractor_instance.extract_metadata_from_job_url.assert_called_once_with(
                 "https://example.com/job/123", mock_notion_instance.get_database_schema.return_value, "gpt-4"
             )

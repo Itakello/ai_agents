@@ -33,6 +33,8 @@ dependencies = [
     "crawl4ai",
     "pypandoc",
     "types-requests",
+    "streamlit",
+    "watchdog",
 ]
 
 [project.optional-dependencies]

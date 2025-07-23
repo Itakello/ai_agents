@@ -252,7 +252,7 @@ class NotionSyncService:
                     build_notion_properties_from_llm_output,
                 )
 
-                db_schema = self.get_database_schema(database_id)
+                db_schema = await self.get_database_schema(database_id)
                 formatted_payload = build_notion_properties_from_llm_output(
                     extracted_data,
                     db_schema,
@@ -269,7 +269,9 @@ class NotionSyncService:
         except Exception as e:
             raise NotionAPIError(f"Failed to save or update extracted data: {str(e)}") from e
 
-    def get_database_schema(self, database_id: str | None = None, *, force_refresh: bool = False) -> dict[str, Any]:
+    async def get_database_schema(
+        self, database_id: str | None = None, *, force_refresh: bool = False
+    ) -> dict[str, Any]:
         """Return the database *properties* as a plain dict.
 
         The schema is fetched once and cached in the instance.  Subsequent
@@ -376,7 +378,7 @@ class NotionSyncService:
                 # Ensure the payload contains **at least one** type-specific key.
                 # The Notion API will reject updates that only modify generic
                 # keys (such as "description") without including the property
-                # type (e.g. "title", "rich_text", …).  If we haven’t added the
+                # type (e.g. "title", "rich_text", …).  If we haven't added the
                 # type above (because the *type* already matched) we include an
                 # *empty* stub so that the request validates.
                 # ------------------------------------------------------------------

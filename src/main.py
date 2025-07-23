@@ -4,6 +4,7 @@ import sys
 from typing import Any
 
 from src.common.services import NotionSyncService, OpenAIService
+from src.common.services.notion_api_service import NotionAPIService
 from src.core.config import Settings
 from src.core.logger import logger
 from src.metadata_extraction import ExtractorService
@@ -122,9 +123,6 @@ async def handle_resume_extract_command(args: argparse.Namespace, settings: Sett
     # The synchronous schema check performed during initialisation closes
     # its temporary event-loop, leaving the internal client orphaned.  Create
     # a *fresh* API service bound to the current asynchronous loop.
-    from src.common.services.notion_api_service import (
-        NotionAPIService,  # local import to avoid cycle
-    )
 
     notion_service.api_service = NotionAPIService()
 
@@ -137,7 +135,8 @@ async def handle_resume_extract_command(args: argparse.Namespace, settings: Sett
     # ------------------------------------------------------------------
     # 2. Fetch the (already verified) database schema for the extractor
     #    – no automatic patching here.
-    database_schema = notion_service.get_database_schema()
+    # ------------------------------------------------------------------
+    database_schema = await notion_service.get_database_schema()
 
     # ------------------------------------------------------------------
     # 3. Extract metadata using the (potentially blocking) extractor – keep

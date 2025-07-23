@@ -90,7 +90,7 @@ class TestMain:
             "company": {"type": "rich_text"},
             "salary": {"type": "number"},
         }
-        mock_notion_service_instance.get_database_schema.return_value = mock_database_schema
+        mock_notion_service_instance.get_database_schema = AsyncMock(return_value=mock_database_schema)
         mock_notion_service.return_value = mock_notion_service_instance
 
         mock_extractor_service_instance = MagicMock()
@@ -111,7 +111,7 @@ class TestMain:
         mock_notion_service.assert_called_once_with(database_id="test-db-id")
         mock_extractor_service.assert_called_once()
 
-        mock_notion_service_instance.get_database_schema.assert_called_once()
+        mock_notion_service_instance.get_database_schema.assert_awaited_once()
         mock_extractor_service_instance.extract_metadata_from_job_url.assert_called_once_with(
             "https://example.com/job",
             mock_database_schema,

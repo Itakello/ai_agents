@@ -95,6 +95,9 @@ class TailorService:
         compiled_tailored_pdf_path = None
 
         for attempt in range(1, max_diff_retries + 1):
+            # Preserve the current response_id so we can roll back in case of failure
+            prev_response_id = self.openai_service.response_id
+
             # logger.info(f"Initial tailoring attempt {attempt}/{max_diff_retries}")
             llm_response = self.openai_service.get_response(
                 system_prompt, user_prompt, model_name=settings.DEFAULT_MODEL_NAME
@@ -114,6 +117,10 @@ class TailorService:
                 logger.info(f"Initial tailoring attempt {attempt} successful.")
                 break  # Successful initial tailoring and compilation
             except ValueError as e:
+                # Revert to the previous successful response thread so that the next
+                # request does **not** append to the failed response.
+                self.openai_service.response_id = prev_response_id
+
                 logger.warning(f"Initial tailoring attempt {attempt} failed: {e}")
                 if attempt == max_diff_retries:
                     logger.error(f"Failed to apply initial diff after {max_diff_retries} attempts.")
@@ -236,6 +243,9 @@ class TailorService:
                 current_tex_content=loop_tex_content,
             )
 
+            # Capture current response_id so we can roll it back on failure
+            prev_response_id = self.openai_service.response_id
+
             # We call get_response with only the user_prompt. The client will handle the history.
             reduction_llm_response = self.openai_service.get_response(
                 sys_prompt=None,  # System prompt is already in the history
@@ -259,6 +269,9 @@ class TailorService:
                     break
 
             except ValueError as e_reduce_diff:
+                # Reset response_id so the next attempt does not continue the failed thread
+                self.openai_service.response_id = prev_response_id
+
                 logger.warning(f"Failed to apply reduction diff on attempt {reduction_attempt}: {e_reduce_diff}")
                 if reduction_attempt == settings.PDF_REDUCTION_MAX_RETRIES:
                     logger.warning("Max reduction retries reached. Proceeding with current PDF version.")
