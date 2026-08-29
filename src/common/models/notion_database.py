@@ -23,6 +23,7 @@ T = TypeVar(
         "status",
         "created_time",
         "last_edited_time",
+        "formula",
     ],
 )
 
@@ -120,6 +121,13 @@ class NotionDatabaseFilesProperty(NotionDatabaseProperty[Literal["files"]]):
     files: list[dict[str, Any]] | None = None
 
 
+class NotionDatabaseFormulaProperty(NotionDatabaseProperty[Literal["formula"]]):
+    """Notion database formula property (read-only)."""
+
+    type: Literal["formula"] = "formula"
+    formula: dict[str, Any] | None = None
+
+
 # ---------------------------------------------------------------------------
 # Additional property types (status / timestamps)
 # ---------------------------------------------------------------------------
@@ -196,6 +204,7 @@ class NotionDatabase(BaseModel):
             "phone_number": NotionDatabasePhoneNumberProperty,
             "date": NotionDatabaseDateProperty,
             "files": NotionDatabaseFilesProperty,
+            "formula": NotionDatabaseFormulaProperty,
             "status": NotionDatabaseStatusProperty,
             "created_time": NotionDatabaseCreatedTimeProperty,
             "last_edited_time": NotionDatabaseLastEditedTimeProperty,

@@ -1,0 +1,201 @@
+\documentclass[letterpaper,10pt]{article}
+
+\usepackage[dvipsnames]{xcolor}
+\usepackage{lmodern}
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+\setlength{\footskip}{4.08003pt}
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItemresumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+\newcommand{\introduction}[1]{\item \small #1}
+\newcommand{\techSkillsItem}[2]{\item \small \textbf{#1}{: {#2}}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+\begin{center}
+    \textbf{\LARGE \scshape Massimo Stefan} \\
+    {\normalsize\textit{|AI Developer|}} \\ \vspace{1pt}
+    \small +39 342 097 0272 $|$ \href{mailto:massimo@mstefan.dev}{\underline{massimo@mstefan.dev}} $|$ 
+    \href{https://www.linkedin.com/in/itakello}{\underline{linkedin.com/in/itakello}} $|$
+    \href{https://github.com/Itakello}{\underline{github.com/itakello}}
+\end{center}
+
+\begin{itemize}[leftmargin=0.15in, label={}]
+    \introduction{
+      AI Developer specializing in NLP, LLMs, and end-to-end automation. I build scalable, production-grade AI systems in Python using OpenAI APIs and modern orchestration, delivering fast with testing, CI/CD, and clean engineering.
+    }
+\end{itemize}
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {University of Trento}{Trento, Italy}
+      {MSc, Artificial Intelligence Systems (GPA: 4.0/4.0)}{Sep. 2022 -- Mar. 2025}
+    \resumeSubheading
+      {University of Trento}{Trento, Italy}
+      {BSc, Computer Science (GPA: 3.7/4.0)}{Sep. 2019 -- Sep. 2022}
+  \resumeSubHeadingListEnd
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {Data Processing Engineer}{Apr. 2022 -- May 2023}
+      {University of Trento}{Trento, Italy}
+      \resumeItemListStart
+        \resumeItem{Built an automated data processing pipeline with modular OOP design, replacing manual scripts and reducing development time and errors.}
+        \resumeItem{Standardized JSON/CSV to PARQUET transformation, achieving a 10x storage reduction while maintaining data integrity and accessibility.}
+        \resumeItem{Accelerated processing with Dask-based multithreading, significantly reducing execution time while preserving consistency.}
+        \resumeItem{Delivered dataset profiles with pandas-profiling and established clear documentation/standards that improved maintainability and collaboration.}
+      \resumeItemListEnd
+
+    \resumeSubheading
+      {Volunteer Competitive Programming Instructor}{Sep. 2021 -- Jan. 2022}
+      {University of Trento}{Trento, Italy}
+      \resumeItemListStart
+        \resumeItem{Taught competitive programming at a local secondary school using hands-on exercises and problem-solving sessions.}
+        \resumeItem{Provided one-on-one guidance and iterated materials in collaboration with school faculty to align with academic standards.}
+      \resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+      \resumeProjectHeading
+          {\textbf{Resume Tailoring System} $|$ \emph{Python, OpenAI API, Notion API, FastAPI, Pytest}}{Apr. 2025 -- Ongoing}
+          \resumeItemListStart
+            \resumeItem{Used OpenAI models to extract structured job metadata and populate a Notion database for streamlined application data.}
+            \resumeItem{Built an AI-driven pipeline that compares requirements to a master resume and generates tailored LaTeX via targeted diffs.}
+            \resumeItem{Integrated Notion API and exposed a FastAPI service; enforced testing (Pytest), code quality (Ruff, MyPy), and CI/CD.}
+          \resumeItemListEnd
+
+      \resumeProjectHeading
+          {\textbf{PhysIQ} $|$ \emph{Python, MongoDB, Streamlit, PyBox2D, OpenRouter API}}{Oct. 2024 -- Mar. 2025}
+          \resumeItemListStart
+            \resumeItem{Created a benchmark (on PHYRE) to evaluate VLMs on physical reasoning tasks with modular Python tooling.}
+            \resumeItem{Designed five evaluation protocols (sanity, ranking, binary, confidence, multi-turn) and automated scoring/visual reports.}
+            \resumeItem{Integrated OpenRouter API for batch model assessment and built a Streamlit UI for interactive testing.}
+          \resumeItemListEnd
+
+      \resumeProjectHeading
+          {\textbf{LLM Interaction Simulator} $|$ \emph{Python, Inquirer3, Ollama, LangChain, MongoDB}}{May. 2024 -- Sept. 2024}
+          \resumeItemListStart
+            \resumeItem{Developed a modular CLI for simulating multi-turn interactions with OSS LLMs; configurable prompts, flows, and parameters.}
+            \resumeItem{Ran systematic tests comparing prompting strategies and conversational flows to assess impact on responses.}
+            \resumeItem{Persisted configurations and results in MongoDB to enable reproducibility and iterative tuning.}
+          \resumeItemListEnd
+
+      \resumeProjectHeading
+          {\textbf{Referring Expression Comprehension} $|$ \emph{Python, PyTorch, CLIP, YOLO, Ollama}}{May 2023 -- Jul. 2023}
+          \resumeItemListStart
+            \resumeItem{Built a visual grounding system combining CLIP text-image similarity with YOLO detection for language-directed localization.}
+            \resumeItem{Reframed the task as classification over detected candidates, improving modularity and interpretability.}
+          \resumeItemListEnd
+    \resumeSubHeadingListEnd
+%-----------PROGRAMMING SKILLS-----------
+\section{Technical Skills}
+\begin{itemize}[leftmargin=0.15in, label={}, nosep]
+  \techSkillsItem{Languages}{Bash, C/C++, Java, JavaScript, JSON, Make, Markdown, PowerShell, Python, SQL (PostgreSQL, SQLite), TypeScript}
+  \techSkillsItem{Frameworks}{Azure, Django, FastAPI, Flask, LangChain, LangGraph, LangSmith, LangMem, Microsoft Graph, Tensorflow, WanDB, Weave}
+  \techSkillsItem{Libraries}{asyncio, dask, datasets, loguru, matplotlib, notion-client, numpy, ollama, openai, opencv, pandas, pandas-profiling, pydantic, pytorch, requests, scikit-learn, seaborn, streamlit, tqdm, transformers, yahoo-finance}
+  \techSkillsItem{Developer Tools}{ChatGPT, CLI tools, Cursor, Docker, Git, GitHub Actions, Miniconda, MongoDB, MyPy, n8n, Overleaf, PostgreSQL, PyTest, Raycast, Ruff, VS Code}
+  \techSkillsItem{Soft Skills}{Problem Solving, Analytical Thinking, Strategic Planning, Rapid Prototyping, Adaptability, Continuous Learning, Effective Communication, Collaborative Leadership, Project Management, Prioritization, Ethical Decision-Making, Technical Documentation, Cross-Functional Teamwork, Ownership Mindset, Intellectual Curiosity, Attention to Detail}
+\end{itemize}
+
+
+\end{document}

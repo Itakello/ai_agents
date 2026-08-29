@@ -1,9 +1,5 @@
 PAGES {page_count}/{goal_pages}
 
-PDF SCREENSHOTS
----------------
-{pdf_screenshots}
-
 CURRENT TEX SOURCE
 ------------------
 ```

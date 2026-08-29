@@ -42,7 +42,7 @@ class NotionAPIService:
         except Exception as e:
             raise NotionAPIError(f"Failed to get page {page_id}: {str(e)}") from e
 
-    async def get_database(self, database_id: str) -> NotionDatabase:
+    async def get_database(self, database_id: str, *, max_attempts: int | None = None) -> NotionDatabase:
         """Get a database by ID.
 
         Args:
@@ -54,11 +54,28 @@ class NotionAPIService:
         Raises:
             NotionAPIError: If there's an error getting the database.
         """
-        try:
-            result = await self.client.databases.retrieve(database_id=database_id)
-            return NotionDatabase.model_validate(result)
-        except Exception as e:
-            raise NotionAPIError(f"Failed to get database {database_id}: {str(e)}") from e
+        max_attempts = max_attempts or get_settings().MAX_API_RETRIES_ON_FAILURE
+        delay_seconds = get_settings().API_RETRY_DELAY_SECONDS
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                result = await self.client.databases.retrieve(database_id=database_id)
+                return NotionDatabase.model_validate(result)
+            except Exception as e:  # noqa: BLE001 – inspect message and retry if network related
+                msg = str(e)
+
+                # Retry on network/connection errors (httpx.ConnectError, timeouts, etc.)
+                network_error = "ConnectError" in msg or "Connection" in msg or "timeout" in msg.lower()
+
+                if network_error and attempt < max_attempts:
+                    await asyncio.sleep(delay_seconds * (get_settings().REQUEST_BACKOFF_MULTIPLIER ** (attempt - 1)))
+                    continue
+
+                # Not retryable or max attempts exceeded – surface as NotionAPIError
+                raise NotionAPIError(f"Failed to get database {database_id}: {msg}") from e
+
+        # Should never reach here – safety valve
+        raise NotionAPIError(f"Failed to get database {database_id}: unknown error")
 
     async def update_page(self, page_id: str, properties: dict[str, Any]) -> NotionPage:
         """Update a page's properties.
