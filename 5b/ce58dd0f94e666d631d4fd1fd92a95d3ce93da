@@ -1,0 +1,19 @@
+tests/common/services/test_notion_sync_service.py
+  s_7a72663a12c2ca::t_50c3a05fce8102 13,79-81,83-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5bce58dd0f94e666d631d4fd1fd92a95d3ce93da",
+  "prompts": {},
+  "sessions": {
+    "s_7a72663a12c2ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c0b4-9c0c-7e00-818b-9ae4c47c5cfa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Massimo Stefan <me@mstefan.dev>"
+    }
+  }
+}
