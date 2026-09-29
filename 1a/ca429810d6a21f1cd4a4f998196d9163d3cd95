@@ -1,0 +1,24 @@
+src/common/services/notion_file_service.py
+  s_7a72663a12c2ca::t_4435f3f027af78 21
+pyproject.toml
+  s_7a72663a12c2ca::t_91ba8b88194382 32
+  s_7a72663a12c2ca::t_4435f3f027af78 43,57
+src/common/services/notion_api_service.py
+  s_7a72663a12c2ca::t_4435f3f027af78 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1aca429810d6a21f1cd4a4f998196d9163d3cd95",
+  "prompts": {},
+  "sessions": {
+    "s_7a72663a12c2ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c0b4-9c0c-7e00-818b-9ae4c47c5cfa",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Massimo Stefan <me@mstefan.dev>"
+    }
+  }
+}
