@@ -18,8 +18,7 @@ class NotionFileService:
         Args:
             api_key: Optional Notion API key. If not provided, uses the value from settings.
         """
-        settings = get_settings()
-        self.api_key = api_key or settings.NOTION_API_KEY
+        self.api_key = api_key or get_settings().NOTION_API_KEY
 
     async def create_file_upload_object(self, file_name: str, mime_type: str) -> tuple[str, str]:
         """Create a file upload object in Notion.
