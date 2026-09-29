@@ -20,8 +20,7 @@ class NotionAPIService:
         Args:
             api_key: Optional Notion API key. If not provided, uses the value from settings.
         """
-        settings = get_settings()
-        self.api_key = api_key or settings.NOTION_API_KEY
+        self.api_key = api_key or get_settings().NOTION_API_KEY
         self.client = NotionClient(auth=self.api_key)
 
     async def get_page(self, page_id: str) -> NotionPage:

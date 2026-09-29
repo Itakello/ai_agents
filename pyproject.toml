@@ -29,7 +29,7 @@ dependencies = [
     "pydantic-settings",
     "python-dotenv",
     "openai==1.82.0",
-    "notion_client",
+    "notion_client>=2.2,<2.3",
     "crawl4ai",
     "pypandoc",
     "types-requests",
@@ -40,6 +40,7 @@ dev = [
     "pytest",
     "ruff",
     "pytest-cov",
+    "pytest-asyncio",
     "pytest-mypy",
     "mypy==1.16.0",
     "pre-commit",
@@ -53,7 +54,7 @@ packages = ["src"]
 # For a full list of rules, see: https://docs.astral.sh/ruff/rules/
 
 line-length = 120
-target-version = "py312"
+target-version = "py310"
 
 # Lint settings
 [tool.ruff.lint]
