@@ -10,6 +10,7 @@ from src.common.exceptions.notion_exceptions import NotionAPIError
 from src.common.models.notion_database import NotionDatabase
 from src.common.models.notion_page import NotionPage
 from src.common.services.notion_sync_service import NotionSyncService
+from src.core.config import Settings
 
 
 @pytest.fixture
@@ -75,8 +76,17 @@ def mock_file_service() -> MagicMock:
 
 
 @pytest.fixture
-def sync_service(mock_api_service: MagicMock, mock_file_service: MagicMock) -> NotionSyncService:
+def sync_service(
+    mock_api_service: MagicMock, mock_file_service: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> NotionSyncService:
     """Create a NotionSyncService instance with mock services."""
+    settings = Settings(
+        OPENAI_API_KEY="test-openai-key",
+        NOTION_API_KEY="test-notion-key",
+        NOTION_DATABASE_ID="test-db-id",
+        MASTER_RESUME_PATH=Path("test-resume.tex"),
+    )
+    monkeypatch.setattr("src.common.services.notion_sync_service.get_settings", lambda: settings)
     return NotionSyncService(api_service=mock_api_service, file_service=mock_file_service)
 
 
