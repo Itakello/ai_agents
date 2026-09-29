@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_7a72663a12c2ca::t_78876700db1d8e 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "004a5146f4e24114591ff24f2ca3cf19fc398642",
+  "prompts": {},
+  "sessions": {
+    "s_7a72663a12c2ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c0b4-9c0c-7e00-818b-9ae4c47c5cfa",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Massimo Stefan <me@mstefan.dev>"
+    }
+  }
+}
